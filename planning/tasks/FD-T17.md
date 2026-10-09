@@ -2,7 +2,7 @@
 id: FD-T17
 type: task
 is_task_of: FD-S08
-status: in-progress
+status: verified-hosted
 depends_on: ["FD-T13", "FD-T14", "FD-T16"]
 ---
 
@@ -26,22 +26,22 @@ Create/push the explicitly authorized turovnd repository, connect the correct Ve
 
 ## Acceptance criteria
 
-- [ ] Public source contains no secrets/private inputs and uses the intended remote.
-- [ ] A real hosted CI run passes for the published revision.
-- [ ] A push triggers the intended Vercel deployment; backend release automation reports its own tested status.
+- [x] Public source contains no secrets/private inputs and uses the intended remote.
+- [x] A real hosted CI run passes for the published revision.
+- [x] A push triggers the intended Vercel deployment; backend release automation reports its own tested status.
 
 ## Tests and verification
 
 - Secret/source allowlist review, remote identity verification, hosted CI run and deployment revision comparison.
-- Exercise a harmless follow-up change through the configured delivery path.
+- Verify follow-up commits independently through the configured delivery path.
 
 ## Status
 
-**in-progress**.
+**verified-hosted**.
 
 ## Implementation evidence
 
-The owner authorized public publication. The coordinator confirmed GitHub-to-Vercel linkage through the official integration. First source push, hosted CI and a push-triggered build remain unverified.
+Public source is published to the intended repository. Git `main` commit [a39a83381155](https://github.com/turovnd/realtime-data-workbench/commit/a39a83381155d6d59fdcab0c3fcde3a7f6f9a163) automatically produced READY production deployment `dpl_5ji7FhSV5HjtmTRPmQ5aq41VEtT7`. [GitHub CI run 38000407525](https://github.com/turovnd/realtime-data-workbench/actions/runs/38000407525) succeeded for that exact source revision, including backend, frontend and container jobs. Backend image rollout was verified separately; the release workflow packages an artifact and does not yet establish automatic server deployment.
 
 Implementation and verification locations:
 

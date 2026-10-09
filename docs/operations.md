@@ -15,13 +15,13 @@ The current two portfolio stacks retain separate PostgreSQL instances. Consolida
 
 ## Frontend build and Git delivery
 
-Vercel uses root directory `web`, runs `pnpm build` and publishes `dist`. Set `ENABLE_EXPERIMENTAL_COREPACK=1` to honor the pinned pnpm version.
+Vercel uses root directory `web`, runs `pnpm build` and publishes `dist`. Production has `ENABLE_EXPERIMENTAL_COREPACK=1`, honoring pinned pnpm 11.20.0.
 
 Set `VITE_API_URL=https://realtime-api.b2p.space` at frontend build time, with no `/api` suffix. It is a public origin, never a credential. Missing this variable selects the labelled browser fixture; `same-origin` is reserved for the optional local Docker web proxy.
 
 Production delivery tracks `main`. `VITE_API_URL` and exact API CORS currently cover the stable production alias only. Feature-branch previews are not promised a working API connection; if used, configure their environment and deliberately allow each exact origin with appropriate data isolation.
 
-The authorized public repository is `turovnd/realtime-data-workbench`. Git-connected automatic Vercel delivery is requested. Confirm repository linkage, build root, environment target and a successful deployment from an actual push before marking integration complete. Backend delivery is a separate pipeline: a UI deployment does not update the API, worker or schema. Current integration evidence is in [delivery status](delivery-status.md).
+The public repository [turovnd/realtime-data-workbench](https://github.com/turovnd/realtime-data-workbench) is connected to the correct Vercel project. A real push to `main` produced a verified READY production deployment. Backend delivery remains separate: a UI deployment does not update API, worker or schema. The current backend image was applied with guarded updates that preserved database/migration containers. Exact image/source/deployment identities and the successful source-revision GitHub CI check are recorded in [delivery status](delivery-status.md).
 
 ## Server configuration and rollout
 

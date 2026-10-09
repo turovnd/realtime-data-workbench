@@ -2,7 +2,7 @@
 id: FD-T15
 type: task
 is_task_of: FD-S08
-status: verified-baseline
+status: verified-hosted
 depends_on: ["FD-T13"]
 ---
 
@@ -24,9 +24,9 @@ Use the own Compose project, private database/network/volume, loopback API, vers
 
 ## Acceptance criteria
 
-- [ ] Migrations and readiness pass for a verified image.
-- [ ] A bounded public synthetic workflow proves worker and persistence.
-- [ ] Original unrelated services/configuration and own non-target containers remain unchanged.
+- [x] Migrations and readiness pass for a verified image.
+- [x] A bounded public synthetic workflow proves worker and persistence.
+- [x] Original unrelated services/configuration and own non-target containers remain unchanged.
 
 ## Tests and verification
 
@@ -35,11 +35,11 @@ Use the own Compose project, private database/network/volume, loopback API, vers
 
 ## Status
 
-**verified-baseline**.
+**verified-hosted**.
 
 ## Implementation evidence
 
-The baseline API/worker/PostgreSQL deployment and public smoke passed. The refactored release still depends on T13 and a new targeted rollout.
+Image `turovnd-realtime:20261010-feedback.2` is deployed with configuration digest `sha256:8658d41bff80823abcd149a91f7228c43a389988902b947367a0e4a8da86d233`. DB/migration containers were preserved, unchanged schema was verified and public HTTPS worker/auth/cursor/logout smoke passed. Final isolation checks preserved all 37 previously running unrelated containers and original nginx files.
 
 Implementation and verification locations:
 

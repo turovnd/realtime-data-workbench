@@ -2,7 +2,7 @@
 
 Production API origin: `https://realtime-api.b2p.space`; local origin: `http://127.0.0.1:8002`. Business routes include `/api` in their paths. Set the frontend API variable to the bare origin, not an origin ending in `/api`.
 
-FastAPI exposes generated OpenAPI at `/openapi.json`. Swagger assets are served locally at `/docs`, with explicit operation tags/descriptions, strict request/response models and bearer security. New documentation behavior is not claimed deployed until [delivery status](delivery-status.md) confirms it.
+FastAPI exposes generated OpenAPI at `/openapi.json`. Swagger assets are served locally at `/docs`, with explicit operation tags/descriptions, strict request/response models and bearer security. [Public Swagger](https://realtime-api.b2p.space/docs) and [OpenAPI](https://realtime-api.b2p.space/openapi.json) are deployed and verified; release evidence is in [delivery status](delivery-status.md).
 
 | Method/path                                       | Purpose                                                    | Authentication  |
 | ------------------------------------------------- | ---------------------------------------------------------- | --------------- |

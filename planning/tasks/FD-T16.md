@@ -2,7 +2,7 @@
 id: FD-T16
 type: task
 is_task_of: FD-S08
-status: pending
+status: verified-hosted
 depends_on: ["FD-T13", "FD-T15"]
 ---
 
@@ -25,9 +25,9 @@ Build with the correct public API origin, use the exact stable Vercel alias in s
 
 ## Acceptance criteria
 
-- [ ] The production alias serves the intended build with the correct API origin.
-- [ ] Browser auth, cross-origin API requests and one durable workflow complete.
-- [ ] No wildcard preview CORS and no silent browser-fixture substitution.
+- [x] The production alias serves the intended build with the correct API origin.
+- [x] Browser auth, cross-origin API requests and one durable workflow complete.
+- [x] No wildcard preview CORS and no silent browser-fixture substitution.
 
 ## Tests and verification
 
@@ -36,11 +36,11 @@ Build with the correct public API origin, use the exact stable Vercel alias in s
 
 ## Status
 
-**pending**.
+**verified-hosted**.
 
 ## Implementation evidence
 
-Vercel reported READY and the stable production alias returned HTTP 200. Coordinator also confirmed exact-origin CORS and UI authentication. A complete refactored browser workflow remains pending.
+The stable production UI reached READY from Git commit [a39a83381155](https://github.com/turovnd/realtime-data-workbench/commit/a39a83381155d6d59fdcab0c3fcde3a7f6f9a163) in deployment `dpl_5ji7FhSV5HjtmTRPmQ5aq41VEtT7`. Public browser authentication/current server data passed with zero console errors; exact-origin CORS and the complete public deterministic API workflow passed. Production uses the real API origin; feature previews require separate setup.
 
 Implementation and verification locations:
 

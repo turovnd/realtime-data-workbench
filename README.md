@@ -2,9 +2,9 @@
 
 Inspect incoming synthetic product feedback, review structured results and exact source quotes, then reprocess a fixed selection without losing earlier versions.
 
-**[Open the UI](https://turovnd-feedback-desk.vercel.app)** · [API health](https://realtime-api.b2p.space/health)
+**[Open the UI](https://turovnd-feedback-desk.vercel.app)** · [Swagger API](https://realtime-api.b2p.space/docs) · [Source](https://github.com/turovnd/realtime-data-workbench)
 
-The UI is published on Vercel. The independent FastAPI API, durable worker and PostgreSQL are deployed in this app’s own Docker project. Public backend workflow checks passed. Exact-origin CORS and UI authentication passed; full refactor regression and Git-connected delivery remain tracked in [delivery status](docs/delivery-status.md); a published static UI alone does not establish those checks.
+Pushes to `main` automatically deploy the UI to Vercel; the first Git-triggered production build is verified. The independent FastAPI API, durable worker and PostgreSQL run in this app’s own Docker project. Public UI authentication, API/data access and complete deterministic backend workflows passed verification. GitHub CI passed for the verified source revision; see [delivery status](docs/delivery-status.md) for exact release and check evidence.
 
 ## Run locally
 
