@@ -1,0 +1,61 @@
+"""A style sample: validate one enrichment without persistence or network I/O."""
+
+from collections.abc import Awaitable, Callable
+from typing import Annotated, Literal
+
+from pydantic import BaseModel, ConfigDict, Field, field_validator
+
+
+class FeedbackInput(BaseModel):
+    model_config = ConfigDict(strict=True, extra="forbid")
+
+    text: str = Field(min_length=1, max_length=4_000)
+
+    @field_validator("text")
+    @classmethod
+    def reject_blank_text(cls, value: str) -> str:
+        if not value.strip():
+            raise ValueError("Feedback must contain non-whitespace text.")
+        return value
+
+
+class Enrichment(BaseModel):
+    model_config = ConfigDict(strict=True, extra="forbid")
+
+    topic: Literal["reliability", "usability", "other"]
+    summary: str = Field(min_length=1, max_length=240)
+    evidence: tuple[Annotated[str, Field(min_length=1, max_length=200)], ...] = Field(
+        min_length=1, max_length=3
+    )
+
+
+Generate = Callable[[str], Awaitable[str]]
+
+
+async def enrich_feedback(text: str, *, generate: Generate) -> Enrichment:
+    """Check shape and source quotes; these checks do not prove the summary true."""
+    feedback = FeedbackInput(text=text)
+    raw_result = await generate(feedback.text)
+    if len(raw_result) > 8_192:
+        raise ValueError("Generated output exceeds the sample's character limit.")
+
+    result = Enrichment.model_validate_json(raw_result)
+    if any(
+        not quote.strip() or quote not in feedback.text for quote in result.evidence
+    ):
+        raise ValueError("Evidence must quote non-blank source text exactly.")
+    return result
+
+
+DEMO_FEEDBACK = "The activity page loses my filters whenever new updates arrive."
+
+
+async def generate_demo_result(text: str) -> str:
+    """Return a fixed response for the single synthetic example."""
+    if text != DEMO_FEEDBACK:
+        raise ValueError("This demo adapter accepts only DEMO_FEEDBACK.")
+    return Enrichment(
+        topic="usability",
+        summary="Live updates reset the selected filters.",
+        evidence=("loses my filters",),
+    ).model_dump_json()

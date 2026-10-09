@@ -1,0 +1,8 @@
+Swagger UI 5.33.1 — SmartBear Software and contributors
+Source: https://www.npmjs.com/package/swagger-ui-dist/v/5.33.1
+License: Apache License 2.0
+Bundled unmodified browser assets: backend/src/workbench/static/swagger/
+Upstream LICENSE, NOTICE and per-file SHA-256 manifest are retained in that directory.
+Reproduce the pinned assets from the repository root:
+  python3 tools/vendor_swagger.py --version 5.33.1
+No package lifecycle scripts run; only the five named assets are copied.

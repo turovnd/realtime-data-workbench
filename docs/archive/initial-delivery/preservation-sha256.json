@@ -1,0 +1,14 @@
+{
+  "operations.md": "f658516eba376b81a6040069fef915d6bd957a1dcaa0c54dd51a1cf4ad3bb3c9",
+  "implementation-status.md": "6f988bfea41d4065fc950153f1252a7fc39ba4581d8a4c6ebc6184e77b14bb1a",
+  "hybrid-deployment.md": "4081a417139a97374029b2ba8c537c40c2ac88ff3058bd780857d4faf24de96c",
+  "decisions/0001-execution-boundary.md": "a806bdf9cf5434df2461fd5a2668bed971d5791bcc3e41031fcad533faf9f62c",
+  "decisions/0002-hybrid-hosting.md": "4cfe4ae972289329aaa5d68ec251cb6f05643116df06fd0ecd81233a1cf5fad6",
+  "style-checkpoint.md": "505431ccb10e126f8b23bc4a7036c46e475f40f8e591e7354b1b43a4b253bdaf",
+  "implementation-plan.md": "0765f9532286e4a87d5d65ca4b1f226e41a410020fba25a4d8f310224d864341",
+  "deployment-research.md": "a6f1b4b386e63f5ba942a447d7c3bd5f52a41d094281b1b288b49e04f80574d0",
+  "repository-readme.md": "9ab20a55aa0f9220fabf22cbe0588e66f7e5a9b0a75b7ab5a104b1c20efd3e9a",
+  "repository-agent-rules.md": "8f53e068f88e733db5d118467d291315a26793a2911ad70e11536f961b5bd5bd",
+  "style-samples/test_enrich_feedback.py.txt": "70ddbe865b8fc1d2e02360d026ad297b7f35fe982c256e3504e38420567ac61d",
+  "style-samples/enrich_feedback.py.txt": "a1bdcd880010c4808b1dd978075dccf341be6c9bbcdcb41b373c8b1a25d8e15e"
+}
