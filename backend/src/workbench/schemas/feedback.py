@@ -12,11 +12,13 @@ class FeedbackInput(StrictModel):
     text: str = Field(min_length=1, max_length=4000)
     channel: Literal["Support", "In-app", "Community"]
 
-    @field_validator("text")
+    @field_validator("text", "identity")
     @classmethod
     def nonblank(cls, value: str) -> str:
         if not value.strip():
-            raise ValueError("Text must not be blank")
+            raise ValueError("Value must not be blank")
+        if "\x00" in value:
+            raise ValueError("Value must not contain a null character")
         return value
 
 
@@ -28,10 +30,12 @@ class SimulationInput(StrictModel):
 class JobView(StrictModel):
     id: str
     config: Config
+    run: int = Field(ge=1, description="Monotonic analysis revision within this feedback")
+    provider: str
     status: Status
     attempts: int
     error: str | None
-    origin: Literal["live", "backfill"]
+    origin: Literal["live", "backfill", "analysis"]
 
 
 class RecordView(StrictModel):
@@ -40,8 +44,12 @@ class RecordView(StrictModel):
     text: str
     channel: str
     ingested_at: str
-    jobs: list[JobView]
-    outputs: list[OutputView]
+    jobs: list[JobView] = Field(
+        max_length=10, description="The latest ten jobs, ordered by increasing run"
+    )
+    outputs: list[OutputView] = Field(
+        max_length=10, description="The latest ten successful outputs, ordered by increasing run"
+    )
 
 
 class Snapshot(StrictModel):

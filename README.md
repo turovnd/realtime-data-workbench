@@ -1,34 +1,27 @@
-# Feedback Desk · realtime-data-workbench
+# Feedback Desk
 
-Inspect incoming synthetic product feedback, review structured results and exact source quotes, then reprocess a fixed selection without losing earlier versions.
+A first MVP for reviewing product feedback: browse a stable feed, inspect original messages and evidence-backed enrichment, and reprocess selected records without losing earlier results.
 
-**[Open the UI](https://turovnd-feedback-desk.vercel.app)** · [Swagger API](https://realtime-api.b2p.space/docs) · [Source](https://github.com/turovnd/realtime-data-workbench)
+[Published application](https://turovnd-feedback-desk.vercel.app) · [Public repository](https://github.com/turovnd/realtime-data-workbench) · [API documentation](https://realtime-api.b2p.space/docs)
 
-Pushes to `main` automatically deploy the UI to Vercel; the first Git-triggered production build is verified. The independent FastAPI API, durable worker and PostgreSQL run in this app’s own Docker project. Public UI authentication, API/data access and complete deterministic backend workflows passed verification. GitHub CI passed for the verified source revision; see [delivery status](docs/delivery-status.md) for exact release and check evidence.
+The current work is a **verified local checkpoint awaiting owner review** for routed pages, interactive real AI analysis and a generated API client. It has not been published. Verification and the published revision are recorded separately in [delivery status](docs/delivery-status.md). Problem grouping, roadmap planning and team collaboration are future product work.
 
 ## Run locally
 
-Requires Docker Compose v2. Preserve an existing `.env`; otherwise copy the example and replace its placeholder database password.
+Use Node 24, pnpm 11.20.0 and the root lockfile:
 
 ```sh
-cp -n .env.example .env
-# Set a unique URL-safe POSTGRES_PASSWORD in .env.
-docker compose --profile local-web up --build -d --wait
+pnpm install --frozen-lockfile
+pnpm dev
 ```
 
-Open `http://127.0.0.1:8082` and choose **Try an isolated demo**. This stack has its own network, credentials and persistent volume. It does not require the other portfolio repository.
+The unconfigured development server at `http://127.0.0.1:5174` is an isolated browser preview. For real AI analysis, use the connected API/worker/PostgreSQL stack at `http://127.0.0.1:8082`, or start development with `VITE_API_URL=http://127.0.0.1:8002 pnpm dev`. See [setup](docs/setup.md#live-analysis) for the bounded OpenRouter configuration. A browser-only preview never impersonates a real AI response.
 
-## Documentation
+## Project map
 
-- [Project documentation](docs/README.md): architecture, setup, API/Swagger, auth, workflows, testing, operations and limits.
-- [Delivery plan](planning/README.md): separate epic/story index and one detailed file per task.
-- [Current verification and deployment status](docs/delivery-status.md): evidence and remaining work.
-- [Contribution rules](AGENTS.md): repository boundaries and delivery authority.
+- `frontend/`: React application and `frontend/tests/`.
+- `backend/`: FastAPI, durable processing and `backend/tests/`.
+- [Documentation](docs/README.md): current setup, API, architecture, testing and operational limits.
+- [MVP plan](docs/planning/README.md): implemented foundation, current UI review and planned product capabilities.
 
-Runtime modules are separated and tests mirror their paths under one `tests/` directory. The complete local regression gate passed. See [setup](docs/setup.md), [testing](docs/testing.md) and [delivery status](docs/delivery-status.md) for commands and hosted release status.
-
-## Provenance and scope
-
-Built independently with AI assistance and synthetic data. No private client implementation, real customer dataset, invented commit history or production performance claim is included. The UI uses the official shadcn Nova / Neutral / Blue / chartBlue / Inter / Lucide preset. Deterministic generation is the default; optional live provider calls require explicit server-side enablement and durable budgets.
-
-The browser-only fixture is explicitly labelled and is separate from the connected server mode.
+Built independently with AI assistance and synthetic data. No private client implementation, customer dataset or production performance claim is included. Connected AI analysis uses the explicitly enabled server-side provider and a durable attempt budget. Deterministic fixtures remain separate for browser previews and automated tests.

@@ -2,38 +2,38 @@
 
 ```mermaid
 flowchart LR
-  UI[React UI on Vercel] -->|HTTPS bearer requests / polling| API[FastAPI]
-  API --> DB[(Private PostgreSQL)]
-  Worker[Python worker] -->|lease and fenced completion| DB
-  Worker -->|optional bounded generation| Provider[OpenRouter]
+  UI[React frontend] -->|HTTPS requests and polling| API[FastAPI]
+  API --> DB[(PostgreSQL)]
+  Worker[Durable Python worker] -->|leased jobs and fenced results| DB
+  Worker -->|optional bounded calls| Provider[OpenRouter]
 ```
 
-The Python API and worker share one typed application package. HTTP composition is separate from application logic, repositories and provider/database adapters. The independent frontend consumes validated API contracts; there is no cross-repository runtime dependency.
+The frontend and backend are independent runtime roots. API and worker compose the same typed Python package. The repository has no runtime dependency on the other portfolio application.
 
-| Path                                        | Responsibility                                             |
-| ------------------------------------------- | ---------------------------------------------------------- |
-| `web/src/pages`                             | Page composition.                                          |
-| `web/src/components`                        | Feature UI, layout and generated primitives.               |
-| `web/src/hooks`                             | Query, auth, filtering, paging and selection state.        |
-| `web/src/lib`                               | API client, contracts, fixture adapters and utilities.     |
-| `backend/src/workbench/routers`             | HTTP routes grouped by concern.                            |
-| `backend/src/workbench/schemas`             | Strict request/response/provider models.                   |
-| `backend/src/workbench/logic`               | Auth, feed, ingestion, enrichment and backfill operations. |
-| `backend/src/workbench/repositories`        | Queries and transactional persistence.                     |
-| `backend/src/workbench/infrastructure`      | Database and external provider adapters.                   |
-| `backend/src/workbench/workers`             | Claim processing and runner.                               |
-| `backend/src/workbench/api.py`, `worker.py` | Thin application entrypoints.                              |
-| `tests/backend/src/workbench`               | Mirrored Python tests.                                     |
-| `tests/web/src`, `tests/web/src/pages`      | Mirrored frontend tests and browser journeys.              |
+| Path                                              | Responsibility                                                                 |
+| ------------------------------------------------- | ------------------------------------------------------------------------------ |
+| `frontend/src/pages/<name>/index.tsx`             | Route-level page implementation; unique children are adjacent files.           |
+| `frontend/src/components/<domain>`                | Reusable or potentially reusable domain components and named public barrel.    |
+| `frontend/src/components/ui`                      | Official shadcn components and the public UI barrel.                           |
+| `frontend/src/hooks`                              | Query, auth, filtering and selection behavior.                                 |
+| `frontend/src/api`                                | Generated fetch client, runtime contracts, session boundary and demo adapters. |
+| `frontend/src/lib`                                | Shared UI utilities.                                                           |
+| `frontend/tests`                                  | Frontend units and browser journeys.                                           |
+| `backend/src/workbench/routers`, `schemas`        | HTTP composition and typed boundaries.                                         |
+| `backend/src/workbench/logic`, `repositories`     | Application operations and transactional persistence.                          |
+| `backend/src/workbench/infrastructure`, `workers` | Database/provider adapters and job execution.                                  |
+| `backend/tests`                                   | Python, HTTP and real PostgreSQL tests.                                        |
 
-Frontend tooling and its lockfile belong to one root pnpm workspace. Frontend tooling and its lockfile belong to one root pnpm workspace. Frontend tooling and its lockfile belong to one root pnpm workspace. The `web/` and `backend/` runtime roots are deliberate: a separate package for every layer would add overhead without a second Python distribution consumer. Test ownership is centralized under root `tests/`. Local refactor verification passed; hosted release status is tracked in [status](delivery-status.md).
+Public imports stop at a named barrel, such as `@/components/feedback` or `@/components/ui`; no more than two path segments follow `@/`. Local siblings use relative imports. Domain context belongs in the directory, so components inside `feedback` are `Feed`, `Filter` and `Summary`. Upstream generated internals retain their supported conventions.
 
-## Data and durability
+The current local routes are `/login`, `/register`, `/feedback`, `/feedback/:id` and `/activity`. This is a focused first-MVP UI step; it does not rewrite the ORM or replace polling with sockets.
 
-A transaction inserts immutable input and its job together. A unique input identity provides idempotent insertion; changed content under the same identity conflicts. Immutable result versions are keyed by record/configuration. Backfill freezes a bounded selection and atomically creates its persisted work.
+The API client is generated with `swagger-typescript-api` from the application's actual OpenAPI schema. Session coordination, error normalization, runtime validation, offline state and browser fixtures remain explicit application code. Generated TypeScript alone does not validate external data.
 
-Workers claim expiring leases under a global concurrency bound, call the provider outside the transaction and fence completion. A database advisory lock serializes selected demo mutations/view creation, trading throughput for understandable bounded consistency. This is not a throughput benchmark.
+Activity has a dedicated read model over individual jobs and bulk groups. Its generated client and runtime contract feed a workspace-scoped TanStack infinite query. Each item hydrates the exact job/result pair; record responses independently retain a small recent-history window. Page-specific disclosure cards remain beside the Activity route.
 
-Feed views freeze matched IDs while processing and arrivals continue. Each page uses a descending sequence keyset and SQL limit, then hydrates only that page. Signed cursors bind workspace, filters and view; views have retention limits. Status polling updates visible results without silently changing list membership.
+## Persistence boundaries
 
-See [hosting decision](decisions/0002-hybrid-hosting.md), [workflows](workflows.md) and [limits](limits.md).
+Ingestion stores immutable input and its job atomically. Workers use expiring leases and fence completion; provider calls happen outside the database transaction. Backfill freezes a bounded selection and preserves older results. Stable feed views bind cursor membership to workspace and filters. See [workflows](workflows.md) and [limits](limits.md) for concrete guarantees and tradeoffs.
+
+The hosted baseline uses Vercel for the frontend and an isolated Docker API/worker/PostgreSQL stack. The current source reorganization is local and requires a separate reviewed deployment. See [operations](operations.md).

@@ -1,11 +1,11 @@
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncEngine
 
-from workbench.infrastructure.tables import batches, jobs, outputs, records, state
+from workbench.infrastructure.tables import batches, jobs, records, state
 from workbench.repositories.coordination import lock_workspace
+from workbench.repositories.feedback import hydrate
 from workbench.schemas.backfills import BatchView
-from workbench.schemas.enrichment import OutputView
-from workbench.schemas.feedback import JobView, RecordView, Snapshot
+from workbench.schemas.feedback import Snapshot
 
 
 async def snapshot(engine: AsyncEngine, workspace_id: str = "test") -> Snapshot:
@@ -17,32 +17,22 @@ async def snapshot(engine: AsyncEngine, workspace_id: str = "test") -> Snapshot:
             )
             or 0
         )
-        raw_rows = (
+        record_ids = list(
             (
                 await conn.execute(
-                    select(records)
+                    select(records.c.id)
                     .where(records.c.workspace_id == workspace_id)
                     .order_by(records.c.sequence.desc())
                 )
-            )
-            .mappings()
-            .all()
+            ).scalars()
         )
+        views = await hydrate(conn, workspace_id, record_ids)
         job_rows = (
             (
                 await conn.execute(
-                    select(jobs).where(jobs.c.workspace_id == workspace_id).order_by(jobs.c.config)
-                )
-            )
-            .mappings()
-            .all()
-        )
-        output_rows = (
-            (
-                await conn.execute(
-                    select(outputs)
-                    .where(outputs.c.workspace_id == workspace_id)
-                    .order_by(outputs.c.config)
+                    select(jobs).where(
+                        jobs.c.workspace_id == workspace_id, jobs.c.origin != "analysis"
+                    )
                 )
             )
             .mappings()
@@ -53,44 +43,14 @@ async def snapshot(engine: AsyncEngine, workspace_id: str = "test") -> Snapshot:
             .mappings()
             .all()
         )
-        views = [
-            RecordView(
-                id=str(row["id"]),
-                sequence=int(row["sequence"]),
-                text=str(row["text"]),
-                channel=str(row["channel"]),
-                ingested_at=row["ingested_at"].isoformat(),
-                jobs=[
-                    JobView.model_validate(
-                        {
-                            key: job[key]
-                            for key in ("id", "config", "status", "attempts", "error", "origin")
-                        }
-                    )
-                    for job in job_rows
-                    if job["record_id"] == row["id"]
-                ],
-                outputs=[
-                    OutputView.model_validate(
-                        {
-                            **output["payload"],
-                            "config": output["config"],
-                            "provider": output["provider"],
-                            "created_at": output["created_at"].isoformat(),
-                        }
-                    )
-                    for output in output_rows
-                    if output["record_id"] == row["id"]
-                ],
-            )
-            for row in raw_rows
-        ]
         batch_views = []
         for batch in batch_rows:
             relevant = [
                 job
                 for job in job_rows
-                if job["record_id"] in batch["record_ids"] and job["config"] == batch["config"]
+                if job["record_id"] in batch["record_ids"]
+                and job["config"] == batch["config"]
+                and job["origin"] != "analysis"
             ]
             batch_views.append(
                 BatchView(

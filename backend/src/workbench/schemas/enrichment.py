@@ -16,5 +16,6 @@ class Enrichment(StrictModel):
 
 class OutputView(Enrichment):
     config: Config
+    run: int = Field(ge=1, description="The completed job revision; previous outputs are retained")
     provider: str
     created_at: str

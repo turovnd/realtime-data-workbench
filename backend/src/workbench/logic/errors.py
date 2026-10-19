@@ -24,3 +24,7 @@ class RetryableProviderError(ConnectionError):
 
 class TerminalProviderError(ValueError):
     pass
+
+
+class NotFoundError(Exception):
+    pass

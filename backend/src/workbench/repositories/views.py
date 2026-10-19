@@ -67,14 +67,14 @@ async def matching_ids(
     latest_job = (
         select(jobs.c.status)
         .where(jobs.c.record_id == records.c.id)
-        .order_by(jobs.c.config.desc())
+        .order_by(jobs.c.run.desc())
         .limit(1)
         .scalar_subquery()
     )
     latest_topic = (
         select(outputs.c.payload["topic"].as_string())
         .where(outputs.c.record_id == records.c.id)
-        .order_by(outputs.c.config.desc())
+        .order_by(outputs.c.run.desc())
         .limit(1)
         .scalar_subquery()
     )

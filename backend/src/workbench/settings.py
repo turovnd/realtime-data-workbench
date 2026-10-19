@@ -1,6 +1,6 @@
 from typing import Literal
 
-from pydantic import Field, SecretStr
+from pydantic import Field, SecretStr, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -16,7 +16,12 @@ class Settings(BaseSettings):
     openrouter_api_key: SecretStr | None = None
     openrouter_max_tokens: int = Field(default=800, ge=100, le=1200)
     openrouter_calls_enabled: bool = False
-    live_call_budget: int = Field(default=3, ge=0, le=100)
+    live_call_budget: int | None = Field(default=3, ge=0, le=100)
+
+    @field_validator("live_call_budget", mode="before")
+    @classmethod
+    def unlimited_call_budget(cls, value: object) -> object:
+        return None if value == "unlimited" else value
 
     @property
     def provider_id(self) -> str:

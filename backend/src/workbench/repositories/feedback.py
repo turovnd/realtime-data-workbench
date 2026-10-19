@@ -1,9 +1,30 @@
-from sqlalchemy import select
+from sqlalchemy import Table, func, select
+from sqlalchemy.engine import RowMapping
 from sqlalchemy.ext.asyncio import AsyncConnection
 
 from workbench.infrastructure.tables import jobs, outputs, records
 from workbench.schemas.enrichment import OutputView
 from workbench.schemas.feedback import JobView, RecordView
+
+
+async def _recent_history(
+    conn: AsyncConnection, table: Table, workspace_id: str, ids: list[str]
+) -> list[RowMapping]:
+    ranked = (
+        select(
+            table,
+            func.row_number()
+            .over(partition_by=table.c.record_id, order_by=table.c.run.desc())
+            .label("position"),
+        )
+        .where(table.c.workspace_id == workspace_id, table.c.record_id.in_(ids))
+        .subquery()
+    )
+    return list(
+        (
+            await conn.execute(select(ranked).where(ranked.c.position <= 10).order_by(ranked.c.run))
+        ).mappings()
+    )
 
 
 async def hydrate(conn: AsyncConnection, workspace_id: str, ids: list[str]) -> list[RecordView]:
@@ -18,28 +39,8 @@ async def hydrate(conn: AsyncConnection, workspace_id: str, ids: list[str]) -> l
         .mappings()
         .all()
     )
-    job_rows = (
-        (
-            await conn.execute(
-                select(jobs)
-                .where(jobs.c.workspace_id == workspace_id, jobs.c.record_id.in_(ids))
-                .order_by(jobs.c.config)
-            )
-        )
-        .mappings()
-        .all()
-    )
-    output_rows = (
-        (
-            await conn.execute(
-                select(outputs)
-                .where(outputs.c.workspace_id == workspace_id, outputs.c.record_id.in_(ids))
-                .order_by(outputs.c.config)
-            )
-        )
-        .mappings()
-        .all()
-    )
+    job_rows = await _recent_history(conn, jobs, workspace_id, ids)
+    output_rows = await _recent_history(conn, outputs, workspace_id, ids)
     return [
         RecordView(
             id=str(row["id"]),
@@ -51,7 +52,16 @@ async def hydrate(conn: AsyncConnection, workspace_id: str, ids: list[str]) -> l
                 JobView.model_validate(
                     {
                         key: job[key]
-                        for key in ("id", "config", "status", "attempts", "error", "origin")
+                        for key in (
+                            "id",
+                            "config",
+                            "run",
+                            "provider",
+                            "status",
+                            "attempts",
+                            "error",
+                            "origin",
+                        )
                     }
                 )
                 for job in job_rows
@@ -62,6 +72,7 @@ async def hydrate(conn: AsyncConnection, workspace_id: str, ids: list[str]) -> l
                     {
                         **output["payload"],
                         "config": output["config"],
+                        "run": output["run"],
                         "provider": output["provider"],
                         "created_at": output["created_at"].isoformat(),
                     }

@@ -16,7 +16,7 @@ async def feed_status(engine: AsyncEngine, workspace_id: str, provider: str) -> 
         latest_job = (
             select(jobs.c.status)
             .where(jobs.c.record_id == records.c.id)
-            .order_by(jobs.c.config.desc())
+            .order_by(jobs.c.run.desc())
             .limit(1)
             .scalar_subquery()
         )
@@ -53,6 +53,7 @@ async def feed_status(engine: AsyncEngine, workspace_id: str, provider: str) -> 
                             jobs.c.workspace_id == workspace_id,
                             jobs.c.record_id.in_(batch["record_ids"]),
                             jobs.c.config == batch["config"],
+                            jobs.c.origin != "analysis",
                         )
                     )
                 )

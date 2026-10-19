@@ -8,6 +8,7 @@ from workbench.logic.errors import (
     ConflictError,
     CursorError,
     CursorExpired,
+    NotFoundError,
     RateLimitError,
 )
 from workbench.settings import Settings
@@ -61,3 +62,7 @@ def install_http(app: FastAPI, config: Settings) -> None:
     @app.exception_handler(CursorError)
     async def cursor_error(_request: Request, exc: CursorError) -> JSONResponse:
         return JSONResponse({"detail": str(exc)}, status_code=400)
+
+    @app.exception_handler(NotFoundError)
+    async def not_found(_request: Request, exc: NotFoundError) -> JSONResponse:
+        return JSONResponse({"detail": str(exc)}, status_code=404)

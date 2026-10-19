@@ -1,15 +1,17 @@
 from workbench.schemas.common import ErrorResponse
 
 ERRORS: dict[int | str, dict[str, object]] = {
+    503: {"model": ErrorResponse, "description": "Real AI analysis is not configured or enabled"},
     400: {
         "model": ErrorResponse,
-        "description": "Invalid, tampered, evicted or filter/workspace-mismatched cursor",
+        "description": "Invalid, tampered, evicted or scope/workspace-mismatched cursor",
     },
     401: {
         "model": ErrorResponse,
         "description": "Invalid credentials, missing, expired or revoked bearer session",
     },
     403: {"model": ErrorResponse, "description": "Mutation origin is not allowed"},
+    404: {"model": ErrorResponse, "description": "Resource does not exist in this workspace"},
     409: {
         "model": ErrorResponse,
         "description": (

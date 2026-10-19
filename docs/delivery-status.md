@@ -1,50 +1,39 @@
 # Delivery status
 
-**[Live UI](https://turovnd-feedback-desk.vercel.app)** · [Swagger](https://realtime-api.b2p.space/docs) · [OpenAPI](https://realtime-api.b2p.space/openapi.json) · [Public repository](https://github.com/turovnd/realtime-data-workbench)
+The first-MVP UI/API checkpoint is **verified locally and awaiting owner review**. The owner has authorized a local Git commit. It has not been pushed or deployed. Full problem grouping, roadmap and team workflows remain planned.
 
-Production UI deployment from Git `main` is verified. The current API/worker image is deployed, its public workflow checks passed, and GitHub CI succeeded for the source revision linked below.
+## Current local verification
 
-## Hosted release
+| Area                        | Evidence                                                                                                                                                                                                                                                                                                                                                |
+| --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Review interface            | Routed authentication, cursor-paginated inbox, message submission, current record analysis and unified Activity. Activity includes automatic, manual and grouped analyses with exact historical results and full-card disclosures.                                                                                                                      |
+| Frontend checks             | TypeScript, ESLint, Prettier and production build passed. All 33 unit tests passed across six files. The existing bundle-size warning remains.                                                                                                                                                                                                          |
+| Controlled Activity and AI  | All 16 unique intercepted browser scenarios passed, including new-feedback discovery, status transitions, manual results, cursor paging/recovery, cancellation, session isolation and analysis beyond ten runs. No paid requests.                                                                                                                       |
+| Browser preview             | All 18 desktop/mobile scenarios passed with API access disabled, including navigation, sample labels, filters, pagination and offline behavior.                                                                                                                                                                                                         |
+| Backend checks              | All 105 tests passed on disposable PostgreSQL 17.11 with no skips. Ruff lint/format and strict mypy passed. Coverage includes concurrent admission, idempotency, unlimited usage counting, recent-response windows, exact historical results and Activity workspace isolation/pagination.                                                               |
+| API generation              | The actual FastAPI schema contains 16 paths. The pinned generated client and OpenAPI reproducibility check passed. Swagger documents the Activity endpoint and revised analysis bounds.                                                                                                                                                                 |
+| Analysis limits             | The owner explicitly approved removing the cumulative live-call ceiling and ten-run record cap. The local worker uses `unlimited`; the persistent usage counter remains active. One unfinished run per record, three attempts per job and 800 output tokens per attempt remain enforced. Shipped defaults stay disabled with a finite ceiling of three. |
+| Local browser verification  | The existing account’s Activity previously showed no runs despite saved jobs. It now shows all five automatic/manual runs, their Analyzed or Needs attention status, and the selected run’s exact saved result/provider/time. Browser logs reported no errors or warnings.                                                                              |
+| Local runtime               | API and web are healthy; worker is running with real OpenRouter mode. UI/API remain on loopback ports 8082/8002. The provider key is present only in the worker.                                                                                                                                                                                        |
+| Data and usage preservation | Before and after the update: 66 feedback records, 74 jobs (72 succeeded, two failed), 72 outputs and 14 provider reservations. No queued/leased jobs were present. The database container and volume were preserved; no new provider request or retry was triggered.                                                                                    |
+| Publication                 | No current hosted CI run or deployment is claimed; no remote service changed.                                                                                                                                                                                                                                                                           |
 
-| Area                   | Verified evidence                                                                                                                                                                                                                                                                             |
-| ---------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Frontend               | Vercel deployment `dpl_5ji7FhSV5HjtmTRPmQ5aq41VEtT7` reached READY from Git, production `main`.                                                                                                                                                                                               |
-| Source revision        | [a39a83381155d6d59fdcab0c3fcde3a7f6f9a163](https://github.com/turovnd/realtime-data-workbench/commit/a39a83381155d6d59fdcab0c3fcde3a7f6f9a163).                                                                                                                                               |
-| Backend image          | `turovnd-realtime:20261010-feedback.2`; image configuration digest `sha256:8658d41bff80823abcd149a91f7228c43a389988902b947367a0e4a8da86d233`.                                                                                                                                                 |
-| Public Swagger         | HTTPS 200 and 12 operations rendered with local assets; interactive Try it out → Execute returned an actual server response 200 from `GET /health`.                                                                                                                                           |
-| Browser/API connection | Production UI authentication and current server data passed; zero console errors. Exact-origin CORS covers the stable production alias.                                                                                                                                                       |
-| Database compatibility | All 11 SQLAlchemy table assignments and the migration function matched the preceding deployed image by AST comparison. No schema change was applied.                                                                                                                                          |
-| Runtime isolation      | Only this app’s API/worker were replaced. Existing DB/migration containers and data were preserved.                                                                                                                                                                                           |
-| GitHub CI              | [Run 38000407525](https://github.com/turovnd/realtime-data-workbench/actions/runs/38000407525) succeeded for source revision [a39a83381155](https://github.com/turovnd/realtime-data-workbench/commit/a39a83381155d6d59fdcab0c3fcde3a7f6f9a163); backend, frontend and container jobs passed. |
-| Recovery               | Off-host backups and restore rehearsal remain unverified.                                                                                                                                                                                                                                     |
+Four browser cases initially timed out during large host-clock jumps: two controlled cases and two desktop preview cases. Each passed its single targeted rerun without source or test changes. The totals above count unique scenarios across initial runs and those reruns.
 
-CI evidence applies to the linked source revision; later documentation commits are checked independently.
+Activity’s read window contains the latest 6,000 activities and explicitly reports older stored history. A database regression paged all 6,000 unique items from 6,002 stored jobs, including cursor positions above 501, without changing jobs, outputs, workspace revision or the provider counter. This is a read bound, not a new analysis limit. Record responses separately include the latest ten jobs and ten successful outputs; historical jobs and results remain stored.
 
-## Public workflow verification
+The full real connected browser suite was not rerun against the live provider. Controlled tests and read-only inspection of existing real results have distinct scopes; they do not claim new end-to-end paid-provider verification.
 
-The bounded combined HTTPS smoke for both new releases passed: 46 requests in 11.54 seconds, independent authentication/workspaces, disjoint 12+12 cursor pages, durable worker processing and logout revocation. All four issued test tokens were revoked. Feedback additionally verified worker v1 completion and selected v2 backfill while preserving raw input and v1 results.
+## Real-provider evidence and validation
 
-The final server comparison found all 37 previously running unrelated containers unchanged by ID, start time and state; original nginx configuration hashes were unchanged. Free disk space was 9.21 GiB at that check. These are deployment observations, not ongoing capacity guarantees.
+The previous owner-approved retry of the reported Russian message completed through the normal UI using OpenRouter / `openai/gpt-4.1-mini`. Run 3 succeeded on its first attempt, saved a 187-character summary and two exact source quotes, and rendered the result. The usage counter moved from 13 to 14. The two earlier failed runs retained their original statuses and attempts.
 
-No paid model calls were made by this smoke. The earlier implementation record reports a separately authorized live adapter check; no live-provider retest is claimed for this structural release.
+Those failed runs stored only the old generic validation error, so their exact cause cannot be reconstructed. Unicode escaping was a plausible contributing factor, not a confirmed diagnosis. The provider prompt now preserves Unicode source text and requires contiguous, original-language evidence. Schema validation and exact-source checks remain enforced. Stored/logged schema diagnostics contain only allowlisted field names and error types; raw responses, source text and unknown field names are not logged. The UI uses fixed explanations for known failures.
 
-## Current refactor evidence
+## Published application
 
-The current layout passed these local checks:
+The published application is separate from this local checkpoint. Its recorded source is [a39a83381155](https://github.com/turovnd/realtime-data-workbench/commit/a39a83381155d6d59fdcab0c3fcde3a7f6f9a163), with [successful CI](https://github.com/turovnd/realtime-data-workbench/actions/runs/38000407525). Those results do not verify the current unpublished edits.
 
-- Ruff lint/format passed for `src`, `../tests/backend` and `../tools`; strict mypy checked 77 source/test modules.
-- `uv run --directory backend pytest` with a disposable real PostgreSQL database: 40 tests passed.
-- Frontend lint, typecheck and formatting passed; `pnpm test`: 11 unit tests passed.
-- `pnpm test:e2e`: 14 desktop/mobile browser-preview scenarios passed.
-- OpenAPI tests checked all 12 application paths, response/security models, local Swagger assets and their pinned checksum manifest. A same-origin Swagger auth/feed/logout flow passed against real PostgreSQL.
-- Native local Compose rebuilt and API/worker/web/own PostgreSQL were healthy. Three connected browser journeys passed real account persistence/logout cleanup, worker v1-to-v2 history, stable cursor pages during arrivals, selection/search and 410 refresh.
-- Frozen offline pnpm installation passed. Browser inspection rendered Swagger operations and Try it out GET /health returned 200.
+The move from `web` to `frontend` requires a reviewed Vercel root-directory update before publishing. Backend releases remain separate from frontend deployment. Encrypted off-host backups and an isolated restore rehearsal remain outstanding.
 
-No live-provider call was rerun during this refactor. Routine verification remained deterministic.
-
-## Remaining delivery work
-
-1. Keep backend release automation separate from Vercel UI auto-deploy: the current backend rollout used guarded image updates; the repository release workflow packages an image artifact.
-2. Configure encrypted off-host backups and verify an isolated restore before relying on retained account data.
-
-Production Git delivery and `VITE_API_URL` cover `main` and the stable production alias. Feature previews require explicit environment/origin configuration. See [operations](operations.md) and [planning](../planning/README.md); earlier records remain in the [archive](archive/README.md).
+See [live setup](setup.md#live-analysis), [operations](operations.md) and the [MVP plan](planning/README.md).

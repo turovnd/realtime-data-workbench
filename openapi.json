@@ -1,0 +1,2364 @@
+{
+  "components": {
+    "schemas": {
+      "ActivityPage": {
+        "additionalProperties": false,
+        "properties": {
+          "has_older": {
+            "description": "Older stored activity exists beyond the latest 6000-item window",
+            "title": "Has Older",
+            "type": "boolean"
+          },
+          "items": {
+            "items": {
+              "discriminator": {
+                "mapping": {
+                  "batch": "#/components/schemas/BatchActivity",
+                  "feedback": "#/components/schemas/FeedbackActivity"
+                },
+                "propertyName": "kind"
+              },
+              "oneOf": [
+                {
+                  "$ref": "#/components/schemas/FeedbackActivity"
+                },
+                {
+                  "$ref": "#/components/schemas/BatchActivity"
+                }
+              ]
+            },
+            "maxItems": 50,
+            "title": "Items",
+            "type": "array"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Cursor"
+          },
+          "refresh_cursor": {
+            "description": "Rehydrate the first page of this same frozen view",
+            "title": "Refresh Cursor",
+            "type": "string"
+          },
+          "revision": {
+            "title": "Revision",
+            "type": "integer"
+          },
+          "total": {
+            "description": "Items in this frozen read window",
+            "maximum": 6000.0,
+            "minimum": 0.0,
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "next_cursor",
+          "refresh_cursor",
+          "total",
+          "has_older",
+          "revision"
+        ],
+        "title": "ActivityPage",
+        "type": "object"
+      },
+      "AnalysisInput": {
+        "additionalProperties": false,
+        "properties": {
+          "identity": {
+            "description": "Unique submission identity retained across retries",
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Identity",
+            "type": "string"
+          }
+        },
+        "required": ["identity"],
+        "title": "AnalysisInput",
+        "type": "object"
+      },
+      "BackfillCreated": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "description": "Identifier of the persisted fixed-selection backfill",
+            "title": "Id",
+            "type": "string"
+          }
+        },
+        "required": ["id"],
+        "title": "BackfillCreated",
+        "type": "object"
+      },
+      "BackfillInput": {
+        "additionalProperties": false,
+        "properties": {
+          "config": {
+            "default": "v2",
+            "enum": ["v1", "v2"],
+            "title": "Config",
+            "type": "string"
+          },
+          "record_ids": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 100,
+            "minItems": 1,
+            "title": "Record Ids",
+            "type": "array"
+          }
+        },
+        "required": ["record_ids"],
+        "title": "BackfillInput",
+        "type": "object"
+      },
+      "BatchActivity": {
+        "additionalProperties": false,
+        "properties": {
+          "batch": {
+            "$ref": "#/components/schemas/BatchView"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "kind": {
+            "const": "batch",
+            "default": "batch",
+            "title": "Kind",
+            "type": "string"
+          }
+        },
+        "required": ["id", "batch"],
+        "title": "BatchActivity",
+        "type": "object"
+      },
+      "BatchItem": {
+        "additionalProperties": false,
+        "properties": {
+          "channel": {
+            "title": "Channel",
+            "type": "string"
+          },
+          "job": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/JobView"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Original target-configuration job; later individual analyses are excluded"
+          },
+          "output": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/OutputView"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Completed output of that exact job run, or null if none was stored"
+          },
+          "record_id": {
+            "title": "Record Id",
+            "type": "string"
+          },
+          "sequence": {
+            "title": "Sequence",
+            "type": "integer"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "record_id",
+          "sequence",
+          "text",
+          "channel",
+          "job",
+          "output"
+        ],
+        "title": "BatchItem",
+        "type": "object"
+      },
+      "BatchPage": {
+        "additionalProperties": false,
+        "properties": {
+          "batch": {
+            "$ref": "#/components/schemas/BatchView"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/BatchItem"
+            },
+            "maxItems": 50,
+            "title": "Items",
+            "type": "array"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Signed continuation for this workspace/batch, or null at the end",
+            "title": "Next Cursor"
+          }
+        },
+        "required": ["batch", "items", "next_cursor"],
+        "title": "BatchPage",
+        "type": "object"
+      },
+      "BatchView": {
+        "additionalProperties": false,
+        "properties": {
+          "cancelled": {
+            "title": "Cancelled",
+            "type": "boolean"
+          },
+          "completed": {
+            "title": "Completed",
+            "type": "integer"
+          },
+          "config": {
+            "enum": ["v1", "v2"],
+            "title": "Config",
+            "type": "string"
+          },
+          "failed": {
+            "title": "Failed",
+            "type": "integer"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "selected": {
+            "title": "Selected",
+            "type": "integer"
+          },
+          "watermark": {
+            "title": "Watermark",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "config",
+          "selected",
+          "completed",
+          "failed",
+          "cancelled",
+          "watermark"
+        ],
+        "title": "BatchView",
+        "type": "object"
+      },
+      "Credentials": {
+        "additionalProperties": false,
+        "properties": {
+          "email": {
+            "maxLength": 254,
+            "minLength": 3,
+            "pattern": "^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$",
+            "title": "Email",
+            "type": "string"
+          },
+          "password": {
+            "description": "12\u2013128 character password; hashed with Argon2id",
+            "maxLength": 128,
+            "minLength": 12,
+            "title": "Password",
+            "type": "string",
+            "writeOnly": true
+          }
+        },
+        "required": ["email", "password"],
+        "title": "Credentials",
+        "type": "object"
+      },
+      "EmptyRequest": {
+        "additionalProperties": false,
+        "description": "An explicit empty JSON request body.",
+        "properties": {},
+        "title": "EmptyRequest",
+        "type": "object"
+      },
+      "ErrorResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "detail": {
+            "description": "Safe explanation; never includes credentials or provider bodies",
+            "title": "Detail",
+            "type": "string"
+          }
+        },
+        "required": ["detail"],
+        "title": "ErrorResponse",
+        "type": "object"
+      },
+      "FeedPage": {
+        "additionalProperties": false,
+        "properties": {
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Opaque continuation token, or null when this frozen view is exhausted",
+            "title": "Next Cursor"
+          },
+          "records": {
+            "items": {
+              "$ref": "#/components/schemas/RecordView"
+            },
+            "title": "Records",
+            "type": "array"
+          },
+          "refresh_cursor": {
+            "description": "Refresh the first page of this same frozen view without changing membership",
+            "title": "Refresh Cursor",
+            "type": "string"
+          },
+          "revision": {
+            "title": "Revision",
+            "type": "integer"
+          },
+          "total": {
+            "description": "Number of records matching the frozen view",
+            "title": "Total",
+            "type": "integer"
+          },
+          "watermark": {
+            "description": "Highest source sequence when this view opened",
+            "title": "Watermark",
+            "type": "integer"
+          },
+          "workspace_id": {
+            "title": "Workspace Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "workspace_id",
+          "records",
+          "next_cursor",
+          "refresh_cursor",
+          "watermark",
+          "revision",
+          "total"
+        ],
+        "title": "FeedPage",
+        "type": "object"
+      },
+      "FeedStatus": {
+        "additionalProperties": false,
+        "properties": {
+          "batches": {
+            "items": {
+              "$ref": "#/components/schemas/BatchView"
+            },
+            "title": "Batches",
+            "type": "array"
+          },
+          "enriched": {
+            "title": "Enriched",
+            "type": "integer"
+          },
+          "failed": {
+            "title": "Failed",
+            "type": "integer"
+          },
+          "latest_sequence": {
+            "title": "Latest Sequence",
+            "type": "integer"
+          },
+          "provider": {
+            "title": "Provider",
+            "type": "string"
+          },
+          "received": {
+            "title": "Received",
+            "type": "integer"
+          },
+          "revision": {
+            "title": "Revision",
+            "type": "integer"
+          },
+          "workspace_id": {
+            "title": "Workspace Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "workspace_id",
+          "revision",
+          "latest_sequence",
+          "received",
+          "enriched",
+          "failed",
+          "batches",
+          "provider"
+        ],
+        "title": "FeedStatus",
+        "type": "object"
+      },
+      "FeedbackActivity": {
+        "additionalProperties": false,
+        "properties": {
+          "feedback": {
+            "$ref": "#/components/schemas/BatchItem"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "kind": {
+            "const": "feedback",
+            "default": "feedback",
+            "title": "Kind",
+            "type": "string"
+          }
+        },
+        "required": ["id", "feedback"],
+        "title": "FeedbackActivity",
+        "type": "object"
+      },
+      "FeedbackInput": {
+        "additionalProperties": false,
+        "properties": {
+          "channel": {
+            "enum": ["Support", "In-app", "Community"],
+            "title": "Channel",
+            "type": "string"
+          },
+          "identity": {
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Identity",
+            "type": "string"
+          },
+          "text": {
+            "maxLength": 4000,
+            "minLength": 1,
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": ["identity", "text", "channel"],
+        "title": "FeedbackInput",
+        "type": "object"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "title": "Detail",
+            "type": "array"
+          }
+        },
+        "title": "HTTPValidationError",
+        "type": "object"
+      },
+      "HealthResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "provider": {
+            "description": "Configured provider identifier, not a secret",
+            "title": "Provider",
+            "type": "string"
+          },
+          "status": {
+            "const": "ok",
+            "default": "ok",
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": ["provider"],
+        "title": "HealthResponse",
+        "type": "object"
+      },
+      "Identity": {
+        "additionalProperties": false,
+        "properties": {
+          "email": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Email"
+          },
+          "kind": {
+            "enum": ["account", "demo"],
+            "title": "Kind",
+            "type": "string"
+          },
+          "workspace_id": {
+            "title": "Workspace Id",
+            "type": "string"
+          }
+        },
+        "required": ["workspace_id", "email", "kind"],
+        "title": "Identity",
+        "type": "object"
+      },
+      "JobView": {
+        "additionalProperties": false,
+        "properties": {
+          "attempts": {
+            "title": "Attempts",
+            "type": "integer"
+          },
+          "config": {
+            "enum": ["v1", "v2"],
+            "title": "Config",
+            "type": "string"
+          },
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "origin": {
+            "enum": ["live", "backfill", "analysis"],
+            "title": "Origin",
+            "type": "string"
+          },
+          "provider": {
+            "title": "Provider",
+            "type": "string"
+          },
+          "run": {
+            "description": "Monotonic analysis revision within this feedback",
+            "minimum": 1.0,
+            "title": "Run",
+            "type": "integer"
+          },
+          "status": {
+            "enum": ["queued", "leased", "succeeded", "failed", "cancelled"],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "config",
+          "run",
+          "provider",
+          "status",
+          "attempts",
+          "error",
+          "origin"
+        ],
+        "title": "JobView",
+        "type": "object"
+      },
+      "OkResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "ok": {
+            "default": true,
+            "title": "Ok",
+            "type": "boolean"
+          }
+        },
+        "title": "OkResponse",
+        "type": "object"
+      },
+      "OutputView": {
+        "additionalProperties": false,
+        "properties": {
+          "config": {
+            "enum": ["v1", "v2"],
+            "title": "Config",
+            "type": "string"
+          },
+          "created_at": {
+            "title": "Created At",
+            "type": "string"
+          },
+          "evidence": {
+            "items": {
+              "maxLength": 200,
+              "minLength": 1,
+              "type": "string"
+            },
+            "maxItems": 3,
+            "minItems": 1,
+            "title": "Evidence",
+            "type": "array"
+          },
+          "intent": {
+            "enum": ["issue", "request", "praise", "unclear"],
+            "title": "Intent",
+            "type": "string"
+          },
+          "provider": {
+            "title": "Provider",
+            "type": "string"
+          },
+          "run": {
+            "description": "The completed job revision; previous outputs are retained",
+            "minimum": 1.0,
+            "title": "Run",
+            "type": "integer"
+          },
+          "summary": {
+            "maxLength": 240,
+            "minLength": 1,
+            "title": "Summary",
+            "type": "string"
+          },
+          "topic": {
+            "enum": [
+              "reliability",
+              "usability",
+              "billing",
+              "performance",
+              "other"
+            ],
+            "title": "Topic",
+            "type": "string"
+          }
+        },
+        "required": [
+          "topic",
+          "intent",
+          "summary",
+          "evidence",
+          "config",
+          "run",
+          "provider",
+          "created_at"
+        ],
+        "title": "OutputView",
+        "type": "object"
+      },
+      "RecordView": {
+        "additionalProperties": false,
+        "properties": {
+          "channel": {
+            "title": "Channel",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "ingested_at": {
+            "title": "Ingested At",
+            "type": "string"
+          },
+          "jobs": {
+            "description": "The latest ten jobs, ordered by increasing run",
+            "items": {
+              "$ref": "#/components/schemas/JobView"
+            },
+            "maxItems": 10,
+            "title": "Jobs",
+            "type": "array"
+          },
+          "outputs": {
+            "description": "The latest ten successful outputs, ordered by increasing run",
+            "items": {
+              "$ref": "#/components/schemas/OutputView"
+            },
+            "maxItems": 10,
+            "title": "Outputs",
+            "type": "array"
+          },
+          "sequence": {
+            "title": "Sequence",
+            "type": "integer"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "sequence",
+          "text",
+          "channel",
+          "ingested_at",
+          "jobs",
+          "outputs"
+        ],
+        "title": "RecordView",
+        "type": "object"
+      },
+      "SessionResult": {
+        "additionalProperties": false,
+        "properties": {
+          "email": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Email"
+          },
+          "kind": {
+            "enum": ["account", "demo"],
+            "title": "Kind",
+            "type": "string"
+          },
+          "token": {
+            "description": "Opaque bearer token, valid for 24 hours; stored hashed by the server",
+            "title": "Token",
+            "type": "string"
+          },
+          "workspace_id": {
+            "title": "Workspace Id",
+            "type": "string"
+          }
+        },
+        "required": ["workspace_id", "email", "kind", "token"],
+        "title": "SessionResult",
+        "type": "object"
+      },
+      "SimulationCreated": {
+        "additionalProperties": false,
+        "properties": {
+          "inserted": {
+            "description": "Number of newly inserted immutable records",
+            "maximum": 12.0,
+            "minimum": 0.0,
+            "title": "Inserted",
+            "type": "integer"
+          }
+        },
+        "required": ["inserted"],
+        "title": "SimulationCreated",
+        "type": "object"
+      },
+      "SimulationInput": {
+        "additionalProperties": false,
+        "properties": {
+          "count": {
+            "default": 12,
+            "maximum": 12.0,
+            "minimum": 1.0,
+            "title": "Count",
+            "type": "integer"
+          },
+          "request_id": {
+            "pattern": "^[a-zA-Z0-9-]{1,64}$",
+            "title": "Request Id",
+            "type": "string"
+          }
+        },
+        "required": ["request_id"],
+        "title": "SimulationInput",
+        "type": "object"
+      },
+      "ValidationError": {
+        "properties": {
+          "ctx": {
+            "title": "Context",
+            "type": "object"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "title": "Location",
+            "type": "array"
+          },
+          "msg": {
+            "title": "Message",
+            "type": "string"
+          },
+          "type": {
+            "title": "Error Type",
+            "type": "string"
+          }
+        },
+        "required": ["loc", "msg", "type"],
+        "title": "ValidationError",
+        "type": "object"
+      }
+    },
+    "securitySchemes": {
+      "WorkspaceBearer": {
+        "description": "Use the opaque token returned by POST /api/auth/register, /login or /demo. Sessions expire after 24 hours; logout revokes the current token. All protected reads and writes use its workspace.",
+        "scheme": "bearer",
+        "type": "http"
+      }
+    }
+  },
+  "info": {
+    "description": "Independent customer-feedback workspace API. First register, sign in or open a demo; use its returned token in Authorize (WorkspaceBearer). Protected reads and writes are scoped to that workspace. Immutable input and versioned results are processed by a separate durable worker. No worker/provider credentials are exposed by this API.",
+    "title": "Feedback Desk API",
+    "version": "0.3.0"
+  },
+  "openapi": "3.1.0",
+  "paths": {
+    "/api/activity": {
+      "get": {
+        "description": "Includes one item per automatic or individual analysis job, and one per bulk backfill (without duplicate child-job items). Each job shows only its exact stored output revision. A new view orders IDs by current scheduling availability and an ID tie-breaker; this is not a creation timestamp. Membership and order freeze for ten minutes; status/results can refresh through refresh_cursor. Signed workspace-scoped cursors page persisted positions with SQL LIMIT. At most twenty views are retained per workspace, shared with feedback/backfill views. Each read window contains at most the latest 6000 IDs; has_older reports older stored activity without blocking new work or deleting history. This flag stays fixed throughout the view. Omit cursor to include new work. This endpoint never enqueues work or calls a provider.",
+        "operationId": "listActivity",
+        "parameters": [
+          {
+            "description": "Maximum items per page; default ten",
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 10,
+              "description": "Maximum items per page; default ten",
+              "maximum": 50,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Opaque next_cursor or refresh_cursor from this activity view",
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Opaque next_cursor or refresh_cursor from this activity view",
+              "title": "Cursor"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ActivityPage"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid, tampered, evicted or scope/workspace-mismatched cursor"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid credentials, missing, expired or revoked bearer session"
+          },
+          "410": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Frozen view expired; restart without a cursor"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "WorkspaceBearer": []
+          }
+        ],
+        "summary": "Read automatic, individual and bulk analysis activity",
+        "tags": ["Activity"]
+      }
+    },
+    "/api/auth/demo": {
+      "post": {
+        "description": "Creates a temporary workspace and a revocable 24-hour bearer token. Seeds 24 synthetic records with deterministic jobs, even when live provider tests are configured. Limited to 20 auth requests per IP per 15 minutes. Send an empty JSON object.",
+        "operationId": "createDemoSession",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/EmptyRequest"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": " Body"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Mutation origin is not allowed"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflicting operation, exhausted capacity or selection outside this workspace"
+          },
+          "413": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "A declared request body of at most 16 KiB is required"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Authentication admission limit reached",
+            "headers": {
+              "Retry-After": {
+                "description": "Retry delay in seconds",
+                "schema": {
+                  "example": 900,
+                  "type": "integer"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Open an isolated synthetic demo",
+        "tags": ["Authentication"]
+      }
+    },
+    "/api/auth/login": {
+      "post": {
+        "description": "Returns a new opaque token for the existing workspace without deleting its records. Tokens expire after 24 hours; at most ten active sessions per account. Invalid credentials use a generic error. Email admission allows ten attempts per 15 minutes; IP admission allows twenty.",
+        "operationId": "loginAccount",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Credentials"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid credentials, missing, expired or revoked bearer session"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Mutation origin is not allowed"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflicting operation, exhausted capacity or selection outside this workspace"
+          },
+          "413": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "A declared request body of at most 16 KiB is required"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Authentication admission limit reached",
+            "headers": {
+              "Retry-After": {
+                "description": "Retry delay in seconds",
+                "schema": {
+                  "example": 900,
+                  "type": "integer"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Sign in to an existing account",
+        "tags": ["Authentication"]
+      }
+    },
+    "/api/auth/logout": {
+      "post": {
+        "description": "Revokes this token immediately. Other account sessions remain valid. The UI separately clears its private query and offline caches. Send an empty JSON object.",
+        "operationId": "logoutSession",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/EmptyRequest"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": " Body"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OkResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid credentials, missing, expired or revoked bearer session"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Mutation origin is not allowed"
+          },
+          "413": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "A declared request body of at most 16 KiB is required"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "WorkspaceBearer": []
+          }
+        ],
+        "summary": "Revoke the current bearer token",
+        "tags": ["Authentication"]
+      }
+    },
+    "/api/auth/me": {
+      "get": {
+        "description": "Validates the bearer token and returns only its workspace and account/demo identity.",
+        "operationId": "getCurrentIdentity",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Identity"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid credentials, missing, expired or revoked bearer session"
+          }
+        },
+        "security": [
+          {
+            "WorkspaceBearer": []
+          }
+        ],
+        "summary": "Read the current session identity",
+        "tags": ["Authentication"]
+      }
+    },
+    "/api/auth/register": {
+      "post": {
+        "description": "Creates an empty personal workspace. Passwords are hashed with Argon2id; they are never returned. Email is normalized to lowercase. No email verification or password reset is implemented. Limited by both IP and email.",
+        "operationId": "registerAccount",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Credentials"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Mutation origin is not allowed"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflicting operation, exhausted capacity or selection outside this workspace"
+          },
+          "413": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "A declared request body of at most 16 KiB is required"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Authentication admission limit reached",
+            "headers": {
+              "Retry-After": {
+                "description": "Retry delay in seconds",
+                "schema": {
+                  "example": 900,
+                  "type": "integer"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Create an independent personal account",
+        "tags": ["Authentication"]
+      }
+    },
+    "/api/backfills": {
+      "post": {
+        "description": "Freezes up to 100 record IDs belonging to this workspace and enqueues the missing target versions atomically. Input and previous outputs stay unchanged. The unique (record, config) operation is idempotent; existing unfinished work must be retried or cancelled, not duplicated. Progress is available in /api/status.",
+        "operationId": "createBackfill",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BackfillInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BackfillCreated"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid credentials, missing, expired or revoked bearer session"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Mutation origin is not allowed"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflicting operation, exhausted capacity or selection outside this workspace"
+          },
+          "413": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "A declared request body of at most 16 KiB is required"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "WorkspaceBearer": []
+          }
+        ],
+        "summary": "Reprocess a fixed selection with another configuration",
+        "tags": ["Backfills and recovery"]
+      }
+    },
+    "/api/backfills/{batch_id}": {
+      "get": {
+        "description": "Pages the persisted fixed selection in descending source sequence with SQL keyset pagination. Membership never expands with new arrivals. Each item shows its original non-analysis target-configuration job and only that job's output; later individual analyses are excluded. A selection may reuse an already completed target version. Progress and job states may refresh. Missing and foreign-workspace batches both return 404. Signed cursors are bound to this workspace and batch for ten minutes, sharing the twenty-view workspace limit with feedback views. Reading does not enqueue work or call a provider.",
+        "operationId": "getBackfill",
+        "parameters": [
+          {
+            "description": "Persisted fixed-selection backfill identifier",
+            "in": "path",
+            "name": "batch_id",
+            "required": true,
+            "schema": {
+              "description": "Persisted fixed-selection backfill identifier",
+              "title": "Batch Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Maximum items per page; default ten",
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 10,
+              "description": "Maximum items per page; default ten",
+              "maximum": 50,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Opaque next_cursor for this workspace/batch; omit to read its first page",
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Opaque next_cursor for this workspace/batch; omit to read its first page",
+              "title": "Cursor"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BatchPage"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid, tampered, evicted or scope/workspace-mismatched cursor"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid credentials, missing, expired or revoked bearer session"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Resource does not exist in this workspace"
+          },
+          "410": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Frozen view expired; restart without a cursor"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "WorkspaceBearer": []
+          }
+        ],
+        "summary": "Read the feedback and original results of one backfill",
+        "tags": ["Backfills and recovery"]
+      }
+    },
+    "/api/backfills/{batch_id}/cancel": {
+      "post": {
+        "description": "Cancels queued/claimed jobs and fences in-flight completions. Already completed versions are preserved. Only a batch in the current workspace can be cancelled. Send an empty JSON object.",
+        "operationId": "cancelBackfill",
+        "parameters": [
+          {
+            "description": "Backfill id returned by createBackfill",
+            "in": "path",
+            "name": "batch_id",
+            "required": true,
+            "schema": {
+              "description": "Backfill id returned by createBackfill",
+              "title": "Batch Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/EmptyRequest"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": " Body"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OkResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid credentials, missing, expired or revoked bearer session"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Mutation origin is not allowed"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflicting operation, exhausted capacity or selection outside this workspace"
+          },
+          "413": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "A declared request body of at most 16 KiB is required"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "WorkspaceBearer": []
+          }
+        ],
+        "summary": "Stop unfinished work in a backfill",
+        "tags": ["Backfills and recovery"]
+      }
+    },
+    "/api/feedback": {
+      "get": {
+        "description": "The first request freezes matching IDs for ten minutes (at most twenty views per workspace). Subsequent requests use a signed opaque cursor and descending sequence keyset with SQL LIMIT. Only one page is hydrated. Processing results may refresh, but membership stays fixed to prevent skips/duplicates. New arrivals and changed matches appear after starting without a cursor. Never construct or reuse a cursor with another workspace or filter.",
+        "operationId": "listFeedback",
+        "parameters": [
+          {
+            "description": "Case-insensitive source-text substring; retained with the cursor",
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "schema": {
+              "default": "",
+              "description": "Case-insensitive source-text substring; retained with the cursor",
+              "maxLength": 100,
+              "title": "Q",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Latest configuration's job status at view creation",
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "schema": {
+              "default": "all",
+              "description": "Latest configuration's job status at view creation",
+              "enum": [
+                "all",
+                "queued",
+                "leased",
+                "succeeded",
+                "failed",
+                "cancelled"
+              ],
+              "title": "Status",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Latest stored output topic at view creation",
+            "in": "query",
+            "name": "topic",
+            "required": false,
+            "schema": {
+              "default": "all",
+              "description": "Latest stored output topic at view creation",
+              "enum": [
+                "all",
+                "reliability",
+                "usability",
+                "billing",
+                "performance",
+                "other"
+              ],
+              "title": "Topic",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Page size; default UI page is twelve",
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 12,
+              "description": "Page size; default UI page is twelve",
+              "maximum": 50,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "description": "Opaque next_cursor or refresh_cursor from the same workspace/filter view; absent opens a current view. Invalid values return 400; retained expired views return 410.",
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Opaque next_cursor or refresh_cursor from the same workspace/filter view; absent opens a current view. Invalid values return 400; retained expired views return 410.",
+              "title": "Cursor"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FeedPage"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid, tampered, evicted or scope/workspace-mismatched cursor"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid credentials, missing, expired or revoked bearer session"
+          },
+          "410": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Frozen view expired; restart without a cursor"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "WorkspaceBearer": []
+          }
+        ],
+        "summary": "Read one stable page of feedback",
+        "tags": ["Feedback"]
+      },
+      "post": {
+        "description": "Accepts user-authored text and an allowed channel. Retain a unique identity for this submission across network retries: identical identity/text/channel returns the existing record with 200; changed content under that identity returns 409. A new immutable input and its durable job commit together and return 201. The separate worker processes it using the configured provider; the request does not wait for enrichment. Existing per-workspace and global limits apply.",
+        "operationId": "createFeedback",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FeedbackInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecordView"
+                }
+              }
+            },
+            "description": "Identical submission replayed"
+          },
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecordView"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid credentials, missing, expired or revoked bearer session"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Mutation origin is not allowed"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflicting operation, exhausted capacity or selection outside this workspace"
+          },
+          "413": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "A declared request body of at most 16 KiB is required"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "WorkspaceBearer": []
+          }
+        ],
+        "summary": "Submit a feedback message for processing",
+        "tags": ["Feedback"]
+      }
+    },
+    "/api/feedback/{record_id}": {
+      "get": {
+        "description": "Opens a feedback record directly, independently of the current list or cursor. Only a record belonging to the authenticated workspace can be read. Missing and foreign-workspace IDs both return 404. Includes immutable source, jobs and all completed result versions.",
+        "operationId": "getFeedback",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "record_id",
+            "required": true,
+            "schema": {
+              "title": "Record Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecordView"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid credentials, missing, expired or revoked bearer session"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Resource does not exist in this workspace"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "WorkspaceBearer": []
+          }
+        ],
+        "summary": "Read one feedback message and its processing history",
+        "tags": ["Feedback"]
+      }
+    },
+    "/api/feedback/{record_id}/analysis": {
+      "post": {
+        "description": "Creates a new durable analysis run using the configured real provider. Previous results remain visible while it runs. Retain identity for network retries: a replay returns 200 without another run; a new request returns 202. One active run per feedback; concurrent requests return 409. There is no lifetime run limit. Record responses include the latest ten jobs and successful outputs. Missing or foreign records return 404. Real-provider mode and calls must be enabled, otherwise 503. Provider budgets, timeouts, output validation and three-attempt limit still apply; acceptance does not guarantee provider availability or successful completion.",
+        "operationId": "analyzeFeedback",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "record_id",
+            "required": true,
+            "schema": {
+              "title": "Record Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AnalysisInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecordView"
+                }
+              }
+            },
+            "description": "Previously admitted request"
+          },
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecordView"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid credentials, missing, expired or revoked bearer session"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Mutation origin is not allowed"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Resource does not exist in this workspace"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflicting operation, exhausted capacity or selection outside this workspace"
+          },
+          "413": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "A declared request body of at most 16 KiB is required"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Real AI analysis is not configured or enabled"
+          }
+        },
+        "security": [
+          {
+            "WorkspaceBearer": []
+          }
+        ],
+        "summary": "Request a new AI analysis of one feedback message",
+        "tags": ["Feedback"]
+      }
+    },
+    "/api/jobs/{job_id}/retry": {
+      "post": {
+        "description": "Only terminal jobs in this workspace with fewer than three lifetime attempts can be retried. Retry retains the original provider/configuration and does not overwrite completed output. Failed provider calls never silently switch to deterministic mode. Send an empty JSON object.",
+        "operationId": "retryEnrichment",
+        "parameters": [
+          {
+            "description": "Job id from a feedback record's processing history",
+            "in": "path",
+            "name": "job_id",
+            "required": true,
+            "schema": {
+              "description": "Job id from a feedback record's processing history",
+              "title": "Job Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/EmptyRequest"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": " Body"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OkResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid credentials, missing, expired or revoked bearer session"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Mutation origin is not allowed"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflicting operation, exhausted capacity or selection outside this workspace"
+          },
+          "413": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "A declared request body of at most 16 KiB is required"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "WorkspaceBearer": []
+          }
+        ],
+        "summary": "Retry an eligible failed or cancelled version",
+        "tags": ["Backfills and recovery"]
+      }
+    },
+    "/api/simulations": {
+      "post": {
+        "description": "Commits one to twelve immutable inputs and durable v1 jobs atomically. Repeating request_id is idempotent; conflicting content is rejected. Bounds: 500 records per workspace and 5,000 globally. A separate worker processes jobs; the HTTP request does not wait for enrichment.",
+        "operationId": "createSimulation",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SimulationInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SimulationCreated"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid credentials, missing, expired or revoked bearer session"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Mutation origin is not allowed"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Conflicting operation, exhausted capacity or selection outside this workspace"
+          },
+          "413": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "A declared request body of at most 16 KiB is required"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "WorkspaceBearer": []
+          }
+        ],
+        "summary": "Enqueue a finite batch of synthetic feedback",
+        "tags": ["Feedback"]
+      }
+    },
+    "/api/status": {
+      "get": {
+        "description": "Returns workspace totals and at most ten backfills. latest_sequence can signal arrivals newer than the current feed watermark. The UI polls every three seconds; this endpoint does not stream events.",
+        "operationId": "getFeedbackStatus",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FeedStatus"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Invalid credentials, missing, expired or revoked bearer session"
+          }
+        },
+        "security": [
+          {
+            "WorkspaceBearer": []
+          }
+        ],
+        "summary": "Read counts, processing progress and new-arrival marker",
+        "tags": ["Feedback"]
+      }
+    },
+    "/health": {
+      "get": {
+        "description": "Checks a PostgreSQL connection. It does not prove worker progress or model-provider availability. No credentials or worker internals are returned.",
+        "operationId": "getHealth",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Check API/database readiness",
+        "tags": ["Health"]
+      }
+    }
+  },
+  "tags": [
+    {
+      "description": "Independent accounts and isolated temporary demos; revocable opaque sessions.",
+      "name": "Authentication"
+    },
+    {
+      "description": "User-authored or synthetic inputs, bounded cursor pages, results and progress.",
+      "name": "Feedback"
+    },
+    {
+      "description": "Fixed selections, version history, cancellation and bounded retry.",
+      "name": "Backfills and recovery"
+    },
+    {
+      "description": "Unified automatic, individual and bulk processing history.",
+      "name": "Activity"
+    },
+    {
+      "description": "Public API/database readiness only.",
+      "name": "Health"
+    }
+  ]
+}

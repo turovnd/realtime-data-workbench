@@ -1,11 +1,20 @@
 # Product overview
 
-Feedback Desk turns synthetic product feedback into inspectable topic, intent and summary results with exact source quotes. Reviewers can select records across pages, request a new fixed processing version and inspect both old and new output without mutating the original message.
+Feedback Desk helps a reviewer understand incoming feedback without losing the original message. The first MVP covers a stable filtered feed, source text, structured topic/intent/summary results, exact evidence quotes and versioned reprocessing of selected records.
 
-A demo creates 24 synthetic records; a registered account starts empty. **Add 12 live records** creates a finite server-side synthetic batch, not a connection to a real external event stream. The separate worker processes persisted jobs. The UI polls status, preserves the current view while new records arrive, and offers explicit refresh.
+The implemented foundation provides isolated demo workspaces, personal accounts, durable processing, cursor pagination, retries and fixed-selection backfill. Demo inputs are synthetic; the application does not claim a connection to external customer channels. A separately labelled browser fixture supports review without API credentials and never silently replaces a failing connected API.
 
-The inspector shows source text, evidence, provider and version history. Backfill freezes the selected IDs, reports persisted progress and supports bounded cancellation/retry. Optional offline snapshots are read-only local copies of loaded synthetic data.
+The current local step makes the review experience easier to navigate: actual page routes, direct record access, a compact interface and an OpenAPI-generated client. Its acceptance is local review and regression evidence, not the presence of new files. See [delivery status](delivery-status.md).
 
-When no API origin is configured, the browser exposes a separately labelled deterministic fixture and disables account sign-in. The connected production mode uses FastAPI/PostgreSQL and never silently falls back to the fixture after API failure.
+## Current local routes
 
-The accepted UI preset is [shadcn b1Ymqvgiu](https://ui.shadcn.com/create?preset=b1Ymqvgiu): Nova, Neutral, Blue/chartBlue, Inter and Lucide. See [workflows](workflows.md), [limits](limits.md) and [delivery status](delivery-status.md).
+`/login` and `/register` handle entry. `/feedback` contains the paginated inbox; `/feedback/:id` opens a message and its analysis; `/activity` shows batch processing, with expandable cards for the selected messages and results of each run. This iteration focuses on adding feedback, reviewing it and following reprocessing. An ORM rewrite, socket transport changes and the full problems/roadmap/team product are outside this step.
+
+## First review flow
+
+1. Open a demo workspace or sign in to a personal workspace.
+2. Browse feedback, apply filters and load more records without unexpected list changes.
+3. Open a record, run real AI analysis explicitly and compare the original text, result and supporting quotes. Sample results are labelled separately.
+4. Request reprocessing for selected records, then expand its Activity card to inspect messages, statuses and saved results from that run. Earlier results remain preserved by the backend.
+
+Full problem grouping, prioritization, roadmap items, ownership, invitations and team workflows are **planned**. Navigation placeholders do not count as completed features. See the [product plan](planning/README.md).

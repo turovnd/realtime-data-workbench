@@ -22,6 +22,17 @@ class Claim:
     attempts: int
     workspace_id: str
     provider: str
+    run: int
+
+
+async def find_analysis_request(conn: AsyncConnection, record_id: str, identity: str) -> bool:
+    return bool(
+        await conn.scalar(
+            select(jobs.c.id).where(
+                jobs.c.record_id == record_id, jobs.c.request_identity == identity
+            )
+        )
+    )
 
 
 async def enqueue(
@@ -32,13 +43,24 @@ async def enqueue(
     batch_id: str | None = None,
     workspace_id: str = "test",
     provider: str = "deterministic-rules/1",
+    request_identity: str | None = None,
 ) -> None:
+    latest = await conn.scalar(select(func.max(jobs.c.run)).where(jobs.c.record_id == record_id))
+    active = await conn.scalar(
+        select(jobs.c.id)
+        .where(jobs.c.record_id == record_id, jobs.c.status.in_(["queued", "leased"]))
+        .limit(1)
+    )
+    if active:
+        raise ConflictError("Analysis is already in progress for this feedback")
     await conn.execute(
         insert(jobs).values(
             id=str(uuid4()),
             workspace_id=workspace_id,
             record_id=record_id,
             config=config,
+            run=int(latest or 0) + 1,
+            request_identity=request_identity,
             origin=origin,
             provider=provider,
             batch_id=batch_id,
@@ -85,7 +107,9 @@ async def claim_job(engine: AsyncEngine, lease_seconds: int = 30) -> Claim | Non
                         ),
                     )
                     .order_by(
-                        case((jobs.c.origin == "live", 0), else_=1), jobs.c.available_at, jobs.c.id
+                        case((jobs.c.origin.in_(["live", "analysis"]), 0), else_=1),
+                        jobs.c.available_at,
+                        jobs.c.id,
                     )
                     .with_for_update(skip_locked=True)
                     .limit(1)
@@ -119,6 +143,7 @@ async def claim_job(engine: AsyncEngine, lease_seconds: int = 30) -> Claim | Non
             attempts,
             str(row["workspace_id"]),
             str(row["provider"]),
+            int(row["run"]),
         )
 
 
@@ -149,6 +174,7 @@ async def finish_job(
                     workspace_id=claim.workspace_id,
                     record_id=claim.record_id,
                     config=claim.config,
+                    run=claim.run,
                     payload=result.model_dump(),
                     provider=claim.provider,
                     created_at=now,
@@ -185,6 +211,18 @@ async def retry_job(engine: AsyncEngine, job_id: str, workspace_id: str = "test"
         )
         if not job or job["status"] not in ("failed", "cancelled") or job["attempts"] >= 3:
             raise ConflictError("Only terminal jobs with remaining attempts can be retried")
+        latest = await conn.scalar(
+            select(func.max(jobs.c.run)).where(jobs.c.record_id == job["record_id"])
+        )
+        if job["run"] != latest:
+            raise ConflictError("Only the latest analysis can be retried")
+        active = await conn.scalar(
+            select(jobs.c.id)
+            .where(jobs.c.record_id == job["record_id"], jobs.c.status.in_(["queued", "leased"]))
+            .limit(1)
+        )
+        if active:
+            raise ConflictError("Analysis is already in progress for this feedback")
         await conn.execute(
             update(jobs)
             .where(jobs.c.workspace_id == workspace_id, jobs.c.id == job_id)

@@ -13,7 +13,7 @@ from starlette.responses import HTMLResponse
 from workbench.dependencies import get_database, get_settings
 from workbench.infrastructure.database import create_engine
 from workbench.infrastructure.http import install_http
-from workbench.routers import auth, backfills, feedback, health
+from workbench.routers import activity, analysis, auth, backfills, feedback, health
 from workbench.settings import Settings
 
 
@@ -31,7 +31,7 @@ def create_app(engine: AsyncEngine | None = None, settings: Settings | None = No
         title="Feedback Desk API",
         version="0.3.0",
         description=(
-            "Independent synthetic-feedback workspace API. First register, sign in or "
+            "Independent customer-feedback workspace API. First register, sign in or "
             "open a demo; use its returned token in Authorize (WorkspaceBearer). "
             "Protected reads and writes are scoped to that workspace. Immutable input "
             "and versioned results are processed by a separate durable worker. No "
@@ -50,12 +50,16 @@ def create_app(engine: AsyncEngine | None = None, settings: Settings | None = No
             {
                 "name": "Feedback",
                 "description": (
-                    "Synthetic ingress, bounded cursor pages, committed results and progress."
+                    "User-authored or synthetic inputs, bounded cursor pages, results and progress."
                 ),
             },
             {
                 "name": "Backfills and recovery",
                 "description": "Fixed selections, version history, cancellation and bounded retry.",
+            },
+            {
+                "name": "Activity",
+                "description": "Unified automatic, individual and bulk processing history.",
             },
             {"name": "Health", "description": "Public API/database readiness only."},
         ],
@@ -63,7 +67,14 @@ def create_app(engine: AsyncEngine | None = None, settings: Settings | None = No
     app.dependency_overrides[get_database] = lambda: database
     app.dependency_overrides[get_settings] = lambda: config
     install_http(app, config)
-    for router in (auth.router, feedback.router, backfills.router, health.router):
+    for router in (
+        auth.router,
+        feedback.router,
+        analysis.router,
+        activity.router,
+        backfills.router,
+        health.router,
+    ):
         app.include_router(router)
     app.mount(
         "/docs-assets",

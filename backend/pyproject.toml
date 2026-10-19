@@ -32,7 +32,7 @@ packages = ["src/workbench"]
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
-testpaths = ["../tests/backend"]
+testpaths = ["tests"]
 addopts = "--import-mode=importlib"
 markers = ["integration: requires a real PostgreSQL database"]
 
@@ -45,4 +45,4 @@ select = ["E", "F", "I", "B", "UP", "ASYNC"]
 
 [tool.mypy]
 strict = true
-files = ["src", "../tests/backend"]
+files = ["src", "tests"]

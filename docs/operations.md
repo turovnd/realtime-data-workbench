@@ -15,7 +15,7 @@ The current two portfolio stacks retain separate PostgreSQL instances. Consolida
 
 ## Frontend build and Git delivery
 
-Vercel uses root directory `web`, runs `pnpm build` and publishes `dist`. Production has `ENABLE_EXPERIMENTAL_COREPACK=1`, honoring pinned pnpm 11.20.0.
+The previously verified Vercel deployment used root directory `web`, `pnpm build` and output `dist`. Current local source uses `frontend/`; update the hosted root directory to `frontend` only in the reviewed publishing step. No remote setting changed during this checkpoint. Production previously used `ENABLE_EXPERIMENTAL_COREPACK=1`, honoring pinned pnpm 11.20.0.
 
 Set `VITE_API_URL=https://realtime-api.b2p.space` at frontend build time, with no `/api` suffix. It is a public origin, never a credential. Missing this variable selects the labelled browser fixture; `same-origin` is reserved for the optional local Docker web proxy.
 

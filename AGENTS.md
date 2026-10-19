@@ -2,30 +2,32 @@
 
 ## Authority and provenance
 
-The owner authorized implementation, Vercel UI deployment, and this app's isolated Docker API/worker/PostgreSQL deployment on the existing server. The owner also explicitly authorized creation and pushes to the **public** GitHub repository `turovnd/realtime-data-workbench` and Git-connected automatic deployment. Older no-push statements are historical and superseded. Verify the actual account, repository and project before mutation; do not repurpose another app's project. Preserve unrelated repositories, services, volumes and proxy configuration.
+The owner has authorized a local Git commit of this first-MVP checkpoint. Push, deployment and remote infrastructure changes require separate authorization. Earlier hosted releases and public repository authorization are historical context, not permission to publish this checkpoint. Preserve unrelated files, services, volumes and proxy configuration. Inspect status before edits and retain the owner's documentation moves/deletions.
 
-Build independently with synthetic data and state AI assistance accurately. Do not copy private client code, datasets, comments, screenshots, logs or Git history. Do not invent authorship, dates, commits, reviews, credentials, production metrics or test results. Never commit secrets, private local paths or career documents. Inspect status before edits; do not discard unrelated work.
+Build independently with AI assistance and synthetic data. Do not copy private client implementations, datasets, comments, screenshots, logs or history. Do not invent authorship, dates, commits, reviews, credentials, production metrics or test results. Never commit secrets or private local paths. Code, comments, UI and documentation are English.
 
-Communicate with the owner in Russian. Code, comments, UI and project documentation are English.
+## Source ownership and style
 
-## Architecture and style
+- Keep `frontend/` and `backend/` as independent runtime roots in this repository. The frontend uses the root pnpm workspace and lockfile.
+- Pages are implemented directly in `frontend/src/pages/<name>/index.tsx`, with named arrow exports. Truly unique page components live directly beside `index.tsx`, not in a page-specific `components/` hierarchy.
+- Reusable and potentially reusable domain components live in `frontend/src/components/<domain>`. Within `feedback`, use `Feed.tsx`, `Filter.tsx`, `Summary.tsx` and named exports through `index.ts`; avoid repeated domain prefixes.
+- Public aliases contain at most two segments after `@/`: `@/components/ui`, `@/components/feedback`, `@/pages/auth`, `@/api`. Use named public barrel exports. Local sibling imports remain relative. Generated API and upstream shadcn internals may retain their supported conventions.
+- Hand-written TypeScript uses `export const name = (...) => {}`, explicit types, `import type`, early returns and small injected modules. Separate imports, types, declarations and operation phases with readable blank lines. Prettier configuration is the shared formatting authority.
+- Generate the fetch client with pinned `swagger-typescript-api` from the actual FastAPI OpenAPI schema. Never hand-edit `frontend/src/api/generated.ts`. Keep session/error handling and runtime validation at a small application boundary; generated types are not runtime validators.
+- Python separates routers, schemas, logic, repositories, infrastructure and workers. Use typed snake_case functions, async I/O, strict boundary schemas and a session per concurrent unit of work. Business logic does not depend on HTTP handlers.
 
-Keep web and backend as independent runtime roots. Frontend source separates pages, components, hooks and lib. The Python package separates routers, schemas, logic, repositories, infrastructure and workers. API and worker entrypoints compose shared modules; business logic does not depend on HTTP handlers. Avoid a package per trivial function.
+Use the official shadcn Nova / Neutral / Blue / chartBlue / Inter / Lucide preset and semantic tokens. Follow the owner's public barrel requirement. Server state belongs in TanStack Query; shareable filters belong in URLs. Keep derived state derived. Add stores or infrastructure only for a demonstrated need.
 
-Hand-written TypeScript uses named arrow exports (`export const name = (...) => {}`), explicit types, `import type`, early returns and small injected modules. Preserve supported conventions in upstream generated UI code. Validate external data at runtime; avoid unchecked casts and `any`. Python uses typed snake_case functions, async I/O, strict Pydantic boundary schemas and a session per concurrent unit of work.
+## Tests and verification
 
-Use official shadcn CLI components and the accepted Nova / Neutral / Blue / chartBlue / Inter / Lucide preset. Keep semantic tokens and accessible composition. Server state belongs in TanStack Query; shareable filters belong in the URL; keep derived state derived. Add stores, brokers or infrastructure only for a demonstrated need.
+Frontend tests live in `frontend/tests/`, backend tests in `backend/tests/`, mirroring their source owners. Distinguish unit, API, real PostgreSQL, worker and browser checks. Test observable behavior rather than duplicating implementation. Use deterministic providers; paid calls require explicit authorization and enforced budgets.
 
-## Tests and delivery
+Run relevant formatting, lint, type checks, unit tests and builds. Verify browser keyboard/focus, loading/empty/error/recovery, authentication, pagination and offline behavior. Database guarantees require disposable real PostgreSQL tests, including concurrency/recovery. Screenshots and mocks are not complete flow evidence.
 
-All automated application tests live under one root `tests/` tree mirroring production paths. Distinguish unit, API, real PostgreSQL, worker and browser tests. Test task-specific behavior rather than mirroring implementation. Use deterministic providers and inputs; paid provider calls require explicit authorization and enforced budgets.
-
-Run formatting, lint, types, unit tests and builds relevant to the change. Database guarantees require real PostgreSQL tests with concurrency/recovery; use disposable test databases only. Browser work needs keyboard/focus, loading/empty/error, stale-session, paging and offline behavior checks as applicable. A screenshot or mocked database is not complete flow evidence.
-
-Keep request sizes, sessions, jobs, retries, provider output and spending bounded. Persist job admission, fences and idempotent effects. Do not claim exactly-once external calls/billing. Credentials stay server-side; `VITE_*` values are public.
+Keep requests, sessions, jobs, retries, provider output and costs bounded. Persist admission, fencing and idempotent effects. Do not claim exactly-once external calls or billing. Credentials stay server-side; `VITE_*` values are public.
 
 ## Documentation and planning
 
-`README.md` is the short entry point. `docs/` describes the current product, contracts, setup and operations. `docs/archive/` preserves superseded research and plans; it is not current authority. `planning/README.md` is the current epic/story index. Every task has its own file, stable ID, `is_task_of` story, dependencies, scope, acceptance criteria, tests, status and implementation evidence.
+`README.md` is the short entry point. `docs/` contains current guidance; `docs/planning/README.md` is the compact product plan. Epics describe product outcomes, stories describe user outcomes, and meaningful tasks record their parent, dependencies, acceptance, tests and status. Keep foundation already delivered, current local work, and planned product scope distinct. Full problem grouping, roadmap and team collaboration remain planned until implemented and verified.
 
-Distinguish source present, verified locally, deployed and externally integrated. Record actual commands and scope; do not turn prior-layout test counts into proof that a structural refactor passed. Update deployment claims only after coordinator confirmation. See [delivery status](docs/delivery-status.md).
+Record actual verification scope in `docs/delivery-status.md`. Historical release counts do not prove the current refactor. Local source, local verification, hosted deployment and external integrations are separate claims.

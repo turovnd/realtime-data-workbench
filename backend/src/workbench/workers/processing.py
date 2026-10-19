@@ -20,7 +20,7 @@ async def process_one(
     lease_seconds: int = 30,
     timeout_seconds: float = 10,
     generators: Mapping[str, Generate] | None = None,
-    live_budget: int = 0,
+    live_budget: int | None = 0,
 ) -> bool:
     claim = await claim_job(engine, lease_seconds)
     if claim is None:
@@ -43,6 +43,7 @@ async def process_one(
     except (TimeoutError, ConnectionError) as exc:
         await finish_job(engine, claim, None, type(exc).__name__, retryable=True)
     except TerminalProviderError as exc:
+        logger.warning("job=%s provider_failure=%s", claim.id, str(exc))
         await finish_job(engine, claim, None, str(exc), retryable=False)
     except ValueError:
         await finish_job(

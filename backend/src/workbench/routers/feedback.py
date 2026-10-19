@@ -1,17 +1,20 @@
 from typing import Annotated, Literal
 
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Query, Response
 
 from workbench.dependencies import AppSettings, Database, Workspace
 from workbench.logic.feed import feed_page
+from workbench.logic.feedback import create_feedback, get_feedback
 from workbench.logic.ingestion import ingest
 from workbench.logic.synthetic import synthetic_inputs
 from workbench.repositories.status import feed_status
 from workbench.routers.responses import errors
 from workbench.schemas.feedback import (
+    FeedbackInput,
     FeedFilters,
     FeedPage,
     FeedStatus,
+    RecordView,
     SimulationCreated,
     SimulationInput,
 )
@@ -111,3 +114,51 @@ async def simulate(
         settings.provider_id,
     )
     return SimulationCreated(inserted=inserted)
+
+
+@router.get(
+    "/feedback/{record_id}",
+    response_model=RecordView,
+    operation_id="getFeedback",
+    summary="Read one feedback message and its processing history",
+    description=(
+        "Opens a feedback record directly, independently of the current list or cursor. "
+        "Only a record belonging to the authenticated workspace can be read. Missing and "
+        "foreign-workspace IDs both return 404. Includes immutable source, jobs and all "
+        "completed result versions."
+    ),
+    responses=errors(401, 404),
+)
+async def detail(record_id: str, database: Database, workspace_id: Workspace) -> RecordView:
+    return await get_feedback(database, workspace_id, record_id)
+
+
+@router.post(
+    "/feedback",
+    response_model=RecordView,
+    status_code=201,
+    operation_id="createFeedback",
+    summary="Submit a feedback message for processing",
+    description=(
+        "Accepts user-authored text and an allowed channel. Retain a unique identity for "
+        "this submission across network retries: identical identity/text/channel returns "
+        "the existing record with 200; changed content under that identity returns 409. "
+        "A new immutable input and its durable job commit together and return 201. "
+        "The separate worker processes it using the configured provider; the request "
+        "does not wait for enrichment. Existing per-workspace and global limits apply."
+    ),
+    responses={
+        200: {"model": RecordView, "description": "Identical submission replayed"},
+        **errors(401, 403, 409, 413),
+    },
+)
+async def create(
+    request: FeedbackInput,
+    response: Response,
+    database: Database,
+    workspace_id: Workspace,
+    settings: AppSettings,
+) -> RecordView:
+    record, inserted = await create_feedback(database, workspace_id, request, settings.provider_id)
+    response.status_code = 201 if inserted else 200
+    return record

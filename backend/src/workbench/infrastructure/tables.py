@@ -6,6 +6,7 @@ from sqlalchemy import (
     Column,
     DateTime,
     ForeignKey,
+    Index,
     Integer,
     MetaData,
     String,
@@ -53,6 +54,8 @@ jobs = Table(
     Column("workspace_id", ForeignKey("workspace_state.id"), nullable=False),
     Column("record_id", ForeignKey("feedback.id"), nullable=False),
     Column("config", String, nullable=False),
+    Column("run", Integer, nullable=False, default=1, server_default="1"),
+    Column("request_identity", String),
     Column("origin", String, nullable=False),
     Column("provider", String, nullable=False, default="deterministic-rules/1"),
     Column("batch_id", ForeignKey("backfills.id")),
@@ -62,7 +65,15 @@ jobs = Table(
     Column("lease_until", DateTime(timezone=True)),
     Column("available_at", DateTime(timezone=True), nullable=False),
     Column("error", Text),
-    UniqueConstraint("record_id", "config", name="uq_job_version"),
+    UniqueConstraint("record_id", "run", name="uq_job_run"),
+    UniqueConstraint("record_id", "request_identity", name="uq_job_request_identity"),
+)
+Index(
+    "uq_job_legacy_config",
+    jobs.c.record_id,
+    jobs.c.config,
+    unique=True,
+    postgresql_where=jobs.c.origin != "analysis",
 )
 outputs = Table(
     "enrichments",
@@ -71,10 +82,11 @@ outputs = Table(
     Column("workspace_id", ForeignKey("workspace_state.id"), nullable=False),
     Column("record_id", ForeignKey("feedback.id"), nullable=False),
     Column("config", String, nullable=False),
+    Column("run", Integer, nullable=False, default=1, server_default="1"),
     Column("payload", JSON, nullable=False),
     Column("provider", String, nullable=False),
     Column("created_at", DateTime(timezone=True), nullable=False),
-    UniqueConstraint("record_id", "config", name="uq_output_version"),
+    UniqueConstraint("record_id", "run", name="uq_output_run"),
 )
 
 
