@@ -1,6 +1,7 @@
 import { ArrowUpRight } from "lucide-react";
 import { Link } from "react-router-dom";
 
+import { feedbackPath } from "@/router/paths";
 import { isAiOutput, type BatchItem } from "@/api";
 import {
   formatAnalysisError,
@@ -41,7 +42,7 @@ export const RunFeedback = ({ item }: Props) => {
         </div>
         <Button asChild variant="outline" size="sm">
           <Link
-            to={`/feedback/${item.record_id}`}
+            to={feedbackPath(item.record_id)}
             aria-label={`Open feedback #${item.sequence}`}
           >
             Open feedback

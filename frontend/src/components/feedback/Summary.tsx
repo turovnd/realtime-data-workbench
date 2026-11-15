@@ -19,7 +19,7 @@ export const Summary = ({ status, onAttention }: Props) => {
         <strong className="font-medium text-foreground">
           {status.enriched}
         </strong>{" "}
-        analyzed
+        processed
       </span>
       {status.failed > 0 && (
         <>

@@ -5,10 +5,10 @@ from sqlalchemy import update
 from sqlalchemy.exc import DBAPIError
 from sqlalchemy.ext.asyncio import AsyncEngine
 
-from workbench.infrastructure.tables import records
 from workbench.logic.errors import ConflictError
 from workbench.logic.ingestion import ingest
 from workbench.logic.synthetic import synthetic_inputs
+from workbench.models import Feedback
 from workbench.repositories.inspection import snapshot
 from workbench.schemas.feedback import FeedbackInput
 
@@ -27,4 +27,4 @@ async def test_atomic_idempotent_ingestion_and_conflict(database: AsyncEngine) -
     assert sum(len(row.jobs) for row in view.records) == 2
     async with database.begin() as conn:
         with pytest.raises(DBAPIError, match="immutable record"):
-            await conn.execute(update(records).values(text="cannot rewrite history"))
+            await conn.execute(update(Feedback).values(text="cannot rewrite history"))

@@ -1,9 +1,15 @@
 import { useRef, useState } from "react";
 import { Plus, RefreshCw, Sparkles, WifiOff, X } from "lucide-react";
 
-import { currentJob, filterRecords } from "@/api";
-import { useFeedbackSelection, useFilters, useWorkbench } from "@/hooks";
-import { Feed, Filter, Summary } from "@/components/feedback";
+import { currentJob, filterRecords, getSession } from "@/api";
+import { useAnalyzeSelection } from "@/api/feedback";
+import {
+  Feed,
+  Filter,
+  Summary,
+  useFeedbackSelection,
+  useFilters,
+} from "@/components/feedback";
 import { PageLoading } from "@/components/layout";
 import {
   Alert,
@@ -13,16 +19,33 @@ import {
   Spinner,
 } from "@/components/ui";
 import { AddFeedback } from "./add-feedback";
+import { useFeedback } from "./use-feedback";
+import { ExampleCard } from "./example-card";
+import { exampleFeedback } from "./example-feedback";
 
 export const FeedbackPage = () => {
   const filters = useFilters();
-  const state = useWorkbench({
+  const analysis = useAnalyzeSelection();
+  const state = useFeedback({
     q: filters.search,
     status: filters.status,
     topic: filters.topic,
   });
-  const [adding, setAdding] = useState(false);
+  const [adding, setAdding] = useState<"blank" | "example" | null>(null);
   const addButton = useRef<HTMLButtonElement>(null);
+  const dialogTrigger = useRef<HTMLButtonElement | null>(null);
+  const demo = getSession()?.kind !== "account";
+  const liveAnalysis =
+    state.status.data?.provider.startsWith("openrouter/") ?? false;
+  const availabilityKnown =
+    state.mode === "browser-demo" || !!state.status.data;
+
+  const openBlank = () => {
+    if (!state.online || !availabilityKnown) return;
+
+    dialogTrigger.current = addButton.current;
+    setAdding("blank");
+  };
   const loaded = state.data?.records ?? [];
   const rows = state.online
     ? loaded
@@ -41,13 +64,10 @@ export const FeedbackPage = () => {
     !!filters.search || filters.status !== "all" || filters.topic !== "all";
 
   const analyze = () =>
-    state.mutation.mutate(
-      {
-        type: "backfill",
-        ids: eligible.map(record => record.id),
-        config: "v2",
-      },
-      { onSuccess: selection.clear }
+    analysis.analyze(
+      eligible.map(record => record.id),
+      "v2",
+      selection.clear
     );
 
   return (
@@ -56,18 +76,28 @@ export const FeedbackPage = () => {
         <div className="flex flex-col gap-2">
           <h1 className="text-2xl font-semibold tracking-tight">Feedback</h1>
           <p className="text-sm text-muted-foreground">
-            Understand what your customers are telling you.
+            Review customer messages and check AI insights against their words.
           </p>
         </div>
         <Button
           ref={addButton}
-          onClick={() => setAdding(true)}
-          disabled={!state.online}
+          onClick={openBlank}
+          disabled={!state.online || !availabilityKnown}
         >
           <Plus data-icon="inline-start" />
           Add feedback
         </Button>
       </div>
+      {demo && (
+        <ExampleCard
+          liveAnalysis={liveAnalysis}
+          disabled={!state.online || !availabilityKnown}
+          onTry={event => {
+            dialogTrigger.current = event.currentTarget;
+            setAdding("example");
+          }}
+        />
+      )}
       <Summary
         status={state.status.data}
         onAttention={() => filters.set("status", "failed")}
@@ -80,6 +110,21 @@ export const FeedbackPage = () => {
             {state.saved
               ? "Showing your saved feedback. Reconnect to add or analyze messages."
               : "Reconnect to load your feedback."}
+          </AlertDescription>
+        </Alert>
+      )}
+      {state.status.error && !availabilityKnown && (
+        <Alert variant="destructive">
+          <AlertTitle>Analysis status unavailable</AlertTitle>
+          <AlertDescription>
+            We couldn’t check whether new feedback can be analyzed.
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => void state.status.refetch()}
+            >
+              Try again
+            </Button>
           </AlertDescription>
         </Alert>
       )}
@@ -106,18 +151,18 @@ export const FeedbackPage = () => {
             size="sm"
             disabled={
               !eligible.length ||
-              state.mutation.isPending ||
+              analysis.pending ||
               !state.online ||
               state.mode === "browser-demo"
             }
             onClick={analyze}
           >
-            {state.mutation.isPending ? (
+            {analysis.pending ? (
               <Spinner data-icon="inline-start" aria-hidden="true" />
             ) : (
               <Sparkles data-icon="inline-start" />
             )}
-            {state.mutation.isPending
+            {analysis.pending
               ? "Starting…"
               : `Analyze selected (${eligible.length})`}
           </Button>
@@ -145,9 +190,9 @@ export const FeedbackPage = () => {
           </AlertDescription>
         </Alert>
       )}
-      {state.mutation.error && (
+      {analysis.error && (
         <Alert variant="destructive">
-          <AlertDescription>{state.mutation.error.message}</AlertDescription>
+          <AlertDescription>{analysis.error.message}</AlertDescription>
         </Alert>
       )}
       {state.query.isPending && state.online ? (
@@ -162,13 +207,13 @@ export const FeedbackPage = () => {
           hasMore={!!state.query.hasNextPage}
           loadingMore={state.query.isFetchingNextPage}
           onLoadMore={() => void state.query.fetchNextPage()}
-          disabled={!state.online}
+          disabled={!state.online || !availabilityKnown}
           filtered={filtered}
           onClear={() => {
             filters.clear();
             selection.clear();
           }}
-          onAdd={() => setAdding(true)}
+          onAdd={openBlank}
         />
       ) : null}
       {state.online && rows.length > 0 && (
@@ -192,11 +237,16 @@ export const FeedbackPage = () => {
           )}
         </div>
       )}
-      <AddFeedback
-        open={adding}
-        onOpenChange={setAdding}
-        onCloseFocus={() => addButton.current?.focus()}
-      />
+      {adding && (
+        <AddFeedback
+          initialText={adding === "example" ? exampleFeedback.text : ""}
+          liveAnalysis={liveAnalysis}
+          onOpenChange={open => {
+            if (!open) setAdding(null);
+          }}
+          onCloseFocus={() => dialogTrigger.current?.focus()}
+        />
+      )}
     </>
   );
 };

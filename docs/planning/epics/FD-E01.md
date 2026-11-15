@@ -1,7 +1,7 @@
 ---
 id: FD-E01
 type: epic
-status: ready-for-review
+status: implemented
 ---
 
 # FD-E01: Review customer feedback

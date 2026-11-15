@@ -1,83 +1,65 @@
+"""Current feedback counts and recent batch progress for one workspace."""
+
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncEngine
 
-from workbench.infrastructure.tables import batches, jobs, records, state
+from workbench.infrastructure.database import session_scope
+from workbench.models import AnalysisBatch, AnalysisJob, Feedback, Workspace
+from workbench.repositories.backfills import batch_view
 from workbench.repositories.coordination import lock_workspace
-from workbench.schemas.backfills import BatchView
 from workbench.schemas.feedback import FeedStatus
 
 
 async def feed_status(engine: AsyncEngine, workspace_id: str, provider: str) -> FeedStatus:
-    async with engine.begin() as conn:
-        await lock_workspace(conn)
-        revision = int(
-            await conn.scalar(select(state.c.cursor).where(state.c.id == workspace_id)) or 0
+    async with session_scope(engine) as session:
+        await lock_workspace(session)
+        revision = await session.scalar(
+            select(Workspace.cursor).where(Workspace.id == workspace_id)
         )
         latest_job = (
-            select(jobs.c.status)
-            .where(jobs.c.record_id == records.c.id)
-            .order_by(jobs.c.run.desc())
+            select(AnalysisJob.status)
+            .where(AnalysisJob.record_id == Feedback.id)
+            .order_by(AnalysisJob.run.desc())
             .limit(1)
             .scalar_subquery()
         )
         counts = (
-            await conn.execute(
+            await session.execute(
                 select(
-                    func.count(),
-                    func.max(records.c.sequence),
-                    func.count().filter(latest_job == "succeeded"),
-                    func.count().filter(latest_job == "failed"),
+                    func.count().label("received"),
+                    func.max(Feedback.sequence).label("latest_sequence"),
+                    func.count().filter(latest_job == "succeeded").label("enriched"),
+                    func.count().filter(latest_job == "failed").label("failed"),
                 )
-                .select_from(records)
-                .where(records.c.workspace_id == workspace_id)
+                .select_from(Feedback)
+                .where(Feedback.workspace_id == workspace_id)
             )
         ).one()
-        batch_rows = (
-            (
-                await conn.execute(
-                    select(batches)
-                    .where(batches.c.workspace_id == workspace_id)
-                    .order_by(batches.c.watermark.desc())
-                    .limit(10)
-                )
+        batches = list(
+            await session.scalars(
+                select(AnalysisBatch)
+                .where(AnalysisBatch.workspace_id == workspace_id)
+                .order_by(AnalysisBatch.watermark.desc())
+                .limit(10)
             )
-            .mappings()
-            .all()
         )
-        batch_views = []
-        for batch in batch_rows:
-            progress = (
-                (
-                    await conn.execute(
-                        select(jobs.c.status).where(
-                            jobs.c.workspace_id == workspace_id,
-                            jobs.c.record_id.in_(batch["record_ids"]),
-                            jobs.c.config == batch["config"],
-                            jobs.c.origin != "analysis",
-                        )
-                    )
-                )
-                .scalars()
-                .all()
-            )
-            batch_views.append(
-                BatchView(
-                    id=str(batch["id"]),
-                    config=batch["config"],
-                    selected=len(batch["record_ids"]),
-                    completed=progress.count("succeeded"),
-                    failed=progress.count("failed"),
-                    cancelled=bool(batch["cancelled"]),
-                    watermark=int(batch["watermark"]),
+        selected_ids = {record_id for batch in batches for record_id in batch.record_ids}
+        jobs = list(
+            await session.scalars(
+                select(AnalysisJob).where(
+                    AnalysisJob.workspace_id == workspace_id,
+                    AnalysisJob.record_id.in_(selected_ids),
+                    AnalysisJob.origin != "analysis",
                 )
             )
+        )
         return FeedStatus(
             workspace_id=workspace_id,
-            revision=revision,
-            latest_sequence=int(counts[1] or 0),
-            received=int(counts[0]),
-            enriched=int(counts[2]),
-            failed=int(counts[3]),
-            batches=batch_views,
+            revision=revision or 0,
+            latest_sequence=counts.latest_sequence or 0,
+            received=counts.received,
+            enriched=counts.enriched,
+            failed=counts.failed,
+            batches=[batch_view(batch, jobs) for batch in batches],
             provider=provider,
         )

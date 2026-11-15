@@ -5,7 +5,8 @@ from pydantic import SecretStr
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncEngine
 
-from workbench.infrastructure.tables import provider_usage
+from workbench.infrastructure.database import session_scope
+from workbench.models import ProviderUsage
 from workbench.repositories.usage import reserve_live_call
 from workbench.settings import Settings
 
@@ -37,8 +38,8 @@ async def test_unlimited_admission_preserves_existing_usage_across_concurrency_a
 
     admitted = await asyncio.gather(*(reserve_live_call(database, None) for _ in range(8)))
     assert all(admitted)
-    async with database.connect() as conn:
-        assert await conn.scalar(select(provider_usage.c.calls)) == 28
+    async with session_scope(database) as session:
+        assert await session.scalar(select(ProviderUsage.calls)) == 28
 
     await database.dispose()
     assert await reserve_live_call(database, None)
@@ -46,8 +47,8 @@ async def test_unlimited_admission_preserves_existing_usage_across_concurrency_a
     assert not await reserve_live_call(database, 29)
     assert await reserve_live_call(database, 30)
     assert not await reserve_live_call(database, 30)
-    async with database.connect() as conn:
-        assert await conn.scalar(select(provider_usage.c.calls)) == 30
+    async with session_scope(database) as session:
+        assert await session.scalar(select(ProviderUsage.calls)) == 30
 
 
 @pytest.mark.integration
@@ -55,9 +56,9 @@ async def test_zero_budget_denies_calls_without_creating_or_resetting_usage(
     database: AsyncEngine,
 ) -> None:
     assert not await reserve_live_call(database, 0)
-    async with database.connect() as conn:
-        assert await conn.scalar(select(provider_usage.c.calls)) is None
+    async with session_scope(database) as session:
+        assert await session.scalar(select(ProviderUsage.calls)) is None
     assert await reserve_live_call(database, None)
     assert not await reserve_live_call(database, 0)
-    async with database.connect() as conn:
-        assert await conn.scalar(select(provider_usage.c.calls)) == 1
+    async with session_scope(database) as session:
+        assert await session.scalar(select(ProviderUsage.calls)) == 1

@@ -1,55 +1,50 @@
-"""Backfill selection/progress persistence, scoped by the caller's workspace."""
+"""Frozen batch selections and their original processing results."""
 
+from collections.abc import Sequence
 from dataclasses import dataclass
 
-from sqlalchemy import and_, insert, select, update
-from sqlalchemy.engine import RowMapping
-from sqlalchemy.ext.asyncio import AsyncConnection
+from sqlalchemy import and_, select, update
+from sqlalchemy.ext.asyncio import AsyncSession
 
-from workbench.infrastructure.tables import batches, jobs, outputs, records
+from workbench.models import AnalysisBatch, AnalysisJob, AnalysisResult, Feedback
+from workbench.repositories.feedback import job_view, output_view
 from workbench.schemas.backfill_details import BatchItem
 from workbench.schemas.backfills import BatchView
 from workbench.schemas.common import Config
-from workbench.schemas.enrichment import OutputView
-from workbench.schemas.feedback import JobView
 
 
 async def selected_records(
-    conn: AsyncConnection, workspace_id: str, ids: list[str]
-) -> list[RowMapping]:
+    session: AsyncSession, workspace_id: str, ids: list[str]
+) -> list[Feedback]:
     return list(
-        (
-            await conn.execute(
-                select(records.c.id, records.c.sequence).where(
-                    records.c.workspace_id == workspace_id, records.c.id.in_(ids)
-                )
-            )
-        ).mappings()
+        await session.scalars(
+            select(Feedback).where(Feedback.workspace_id == workspace_id, Feedback.id.in_(ids))
+        )
     )
 
 
-async def existing_jobs(conn: AsyncConnection, ids: list[str], config: Config) -> list[RowMapping]:
+async def existing_jobs(session: AsyncSession, ids: list[str], config: Config) -> list[AnalysisJob]:
     return list(
-        (
-            await conn.execute(
-                select(jobs).where(
-                    jobs.c.record_id.in_(ids), jobs.c.config == config, jobs.c.origin != "analysis"
-                )
+        await session.scalars(
+            select(AnalysisJob).where(
+                AnalysisJob.record_id.in_(ids),
+                AnalysisJob.config == config,
+                AnalysisJob.origin != "analysis",
             )
-        ).mappings()
+        )
     )
 
 
 async def insert_backfill(
-    conn: AsyncConnection,
+    session: AsyncSession,
     workspace_id: str,
     batch_id: str,
     ids: list[str],
     config: Config,
     watermark: int,
 ) -> None:
-    await conn.execute(
-        insert(batches).values(
+    session.add(
+        AnalysisBatch(
             id=batch_id,
             workspace_id=workspace_id,
             config=config,
@@ -60,26 +55,32 @@ async def insert_backfill(
     )
 
 
-async def contains_backfill(conn: AsyncConnection, workspace_id: str, batch_id: str) -> bool:
+async def contains_backfill(session: AsyncSession, workspace_id: str, batch_id: str) -> bool:
     return bool(
-        await conn.scalar(
-            select(batches.c.id).where(
-                batches.c.workspace_id == workspace_id, batches.c.id == batch_id
+        await session.scalar(
+            select(AnalysisBatch.id).where(
+                AnalysisBatch.workspace_id == workspace_id, AnalysisBatch.id == batch_id
             )
         )
     )
 
 
-async def cancel_unfinished(conn: AsyncConnection, workspace_id: str, batch_id: str) -> None:
-    await conn.execute(
-        update(batches)
-        .where(batches.c.workspace_id == workspace_id, batches.c.id == batch_id)
+async def cancel_unfinished(session: AsyncSession, workspace_id: str, batch_id: str) -> None:
+    # Fencing every unfinished child in the same transaction prevents late results
+    # from a worker which already started an external call.
+    await session.execute(
+        update(AnalysisBatch)
+        .where(AnalysisBatch.workspace_id == workspace_id, AnalysisBatch.id == batch_id)
         .values(cancelled=True)
     )
-    await conn.execute(
-        update(jobs)
-        .where(jobs.c.batch_id == batch_id, jobs.c.status.in_(["queued", "leased"]))
-        .values(status="cancelled", fence=jobs.c.fence + 1, lease_until=None)
+    await session.execute(
+        update(AnalysisJob)
+        .where(
+            AnalysisJob.workspace_id == workspace_id,
+            AnalysisJob.batch_id == batch_id,
+            AnalysisJob.status.in_(["queued", "leased"]),
+        )
+        .values(status="cancelled", fence=AnalysisJob.fence + 1, lease_until=None)
     )
 
 
@@ -89,121 +90,87 @@ class StoredBatch:
     record_ids: list[str]
 
 
+def batch_view(batch: AnalysisBatch, jobs: Sequence[AnalysisJob]) -> BatchView:
+    selected = set(batch.record_ids)
+    progress = [
+        job.status
+        for job in jobs
+        if job.workspace_id == batch.workspace_id
+        and job.record_id in selected
+        and job.config == batch.config
+        and job.origin != "analysis"
+    ]
+    return BatchView(
+        id=batch.id,
+        config=batch.config,
+        selected=len(batch.record_ids),
+        completed=progress.count("succeeded"),
+        failed=progress.count("failed"),
+        cancelled=batch.cancelled,
+        watermark=batch.watermark,
+    )
+
+
 async def get_backfill(
-    conn: AsyncConnection, workspace_id: str, batch_id: str
+    session: AsyncSession, workspace_id: str, batch_id: str
 ) -> StoredBatch | None:
-    row = (
-        (
-            await conn.execute(
-                select(batches).where(
-                    batches.c.workspace_id == workspace_id, batches.c.id == batch_id
-                )
+    batch = await session.scalar(
+        select(AnalysisBatch).where(
+            AnalysisBatch.workspace_id == workspace_id, AnalysisBatch.id == batch_id
+        )
+    )
+    if batch is None:
+        return None
+    jobs = list(
+        await session.scalars(
+            select(AnalysisJob).where(
+                AnalysisJob.workspace_id == workspace_id,
+                AnalysisJob.record_id.in_(batch.record_ids),
+                AnalysisJob.config == batch.config,
+                AnalysisJob.origin != "analysis",
             )
         )
-        .mappings()
-        .first()
     )
-    if row is None:
-        return None
-    ids = list(row["record_ids"])
-    progress = list(
-        (
-            await conn.execute(
-                select(jobs.c.status).where(
-                    jobs.c.workspace_id == workspace_id,
-                    jobs.c.record_id.in_(ids),
-                    jobs.c.config == row["config"],
-                    jobs.c.origin != "analysis",
-                )
-            )
-        ).scalars()
-    )
-    return StoredBatch(
-        view=BatchView(
-            id=str(row["id"]),
-            config=row["config"],
-            selected=len(ids),
-            completed=progress.count("succeeded"),
-            failed=progress.count("failed"),
-            cancelled=bool(row["cancelled"]),
-            watermark=int(row["watermark"]),
-        ),
-        record_ids=ids,
-    )
+    return StoredBatch(view=batch_view(batch, jobs), record_ids=batch.record_ids)
 
 
 async def batch_items(
-    conn: AsyncConnection, workspace_id: str, ids: list[str], config: Config
+    session: AsyncSession, workspace_id: str, ids: list[str], config: Config
 ) -> list[BatchItem]:
-    """Read exact historical batch results without consulting the recent-history window."""
+    """Read exact historical batch results without a recent-history window."""
     if len(ids) > 50:
         raise ValueError("Batch detail pages are limited to 50 records")
-    job_fields = ("id", "config", "run", "provider", "status", "attempts", "error", "origin")
-    rows = (
-        (
-            await conn.execute(
-                select(
-                    records.c.id,
-                    records.c.sequence,
-                    records.c.text,
-                    records.c.channel,
-                    *(jobs.c[field].label("job_" + field) for field in job_fields),
-                    outputs.c.payload.label("output_payload"),
-                    outputs.c.config.label("output_config"),
-                    outputs.c.run.label("output_run"),
-                    outputs.c.provider.label("output_provider"),
-                    outputs.c.created_at.label("output_created_at"),
-                )
-                .select_from(
-                    records.outerjoin(
-                        jobs,
-                        and_(
-                            jobs.c.record_id == records.c.id,
-                            jobs.c.workspace_id == workspace_id,
-                            jobs.c.config == config,
-                            jobs.c.origin != "analysis",
-                        ),
-                    ).outerjoin(
-                        outputs,
-                        and_(
-                            outputs.c.record_id == records.c.id,
-                            outputs.c.workspace_id == workspace_id,
-                            outputs.c.run == jobs.c.run,
-                            outputs.c.config == jobs.c.config,
-                        ),
-                    )
-                )
-                .where(records.c.workspace_id == workspace_id, records.c.id.in_(ids))
-                .order_by(records.c.sequence.desc())
-            )
+    rows = await session.execute(
+        select(Feedback, AnalysisJob, AnalysisResult)
+        .outerjoin(
+            AnalysisJob,
+            and_(
+                AnalysisJob.record_id == Feedback.id,
+                AnalysisJob.workspace_id == workspace_id,
+                AnalysisJob.config == config,
+                AnalysisJob.origin != "analysis",
+            ),
         )
-        .mappings()
-        .all()
+        .outerjoin(
+            AnalysisResult,
+            and_(
+                AnalysisResult.record_id == Feedback.id,
+                AnalysisResult.workspace_id == workspace_id,
+                AnalysisResult.run == AnalysisJob.run,
+                AnalysisResult.config == AnalysisJob.config,
+            ),
+        )
+        .where(Feedback.workspace_id == workspace_id, Feedback.id.in_(ids))
+        .order_by(Feedback.sequence.desc())
     )
     return [
         BatchItem(
-            record_id=str(row["id"]),
-            sequence=int(row["sequence"]),
-            text=str(row["text"]),
-            channel=str(row["channel"]),
-            job=(
-                JobView.model_validate({field: row["job_" + field] for field in job_fields})
-                if row["job_id"] is not None
-                else None
-            ),
-            output=(
-                OutputView.model_validate(
-                    {
-                        **row["output_payload"],
-                        "config": row["output_config"],
-                        "run": row["output_run"],
-                        "provider": row["output_provider"],
-                        "created_at": row["output_created_at"].isoformat(),
-                    }
-                )
-                if row["output_payload"] is not None
-                else None
-            ),
+            record_id=feedback.id,
+            sequence=feedback.sequence,
+            text=feedback.text,
+            channel=feedback.channel,
+            job=job_view(job) if job is not None else None,
+            output=output_view(output) if output is not None else None,
         )
-        for row in rows
+        for feedback, job, output in rows
     ]

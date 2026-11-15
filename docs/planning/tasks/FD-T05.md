@@ -2,7 +2,7 @@
 id: FD-T05
 type: task
 is_task_of: FD-S03
-status: ready-for-review
+status: implemented
 depends_on: ["FD-T02", "FD-T04"]
 ---
 
@@ -16,6 +16,7 @@ Let a reviewer submit a bounded message and follow processing through the actual
 
 ## Acceptance
 
+- The submission action explains whether it starts real AI analysis; it never issues a second analysis merely to complete the guided example.
 - The actual FastAPI schema generates the pinned fetch client; generated files are never hand-edited.
 - Authenticated submission validates inputs and uses an idempotent request identity.
 - Pending, failure and successful submission remain visible; no fake completion is shown.
@@ -27,6 +28,6 @@ Schema/client generation checks, HTTP validation/isolation tests, unit tests and
 
 ## Evidence and status
 
-The generated contract, API and browser submission flow are verified locally and ready for owner review. This route has not been published.
+The generated client is reproducible from the actual OpenAPI schema. Query and session boundaries are separated, and connected submission through API, worker and PostgreSQL passed. See the release ledger for the published source revision.
 
 See [delivery status](../../delivery-status.md) for actual verification and release scope.

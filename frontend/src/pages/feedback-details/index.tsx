@@ -1,8 +1,9 @@
 import { Link, useLocation, useParams } from "react-router-dom";
-import { ArrowLeft, RotateCcw, Sparkles } from "lucide-react";
+import { Activity, ArrowLeft, RotateCcw, Sparkles } from "lucide-react";
 
+import { Path } from "@/router/paths";
 import { ApiError, isAiOutput } from "@/api";
-import { useAnalysis } from "@/hooks";
+import { useAnalysis } from "@/api/feedback";
 import { Status } from "@/components/feedback";
 import { PageLoading, PageMessage } from "@/components/layout";
 import {
@@ -25,7 +26,7 @@ const Details = ({ id }: { id: string }) => {
   const analysis = useAnalysis(id);
   const { query, record, online, action, busy, job, output, preview } =
     analysis;
-  const back = `/feedback${location.search}`;
+  const back = `${Path.Feedback}${location.search}`;
   const failed =
     !!action.error || job?.status === "failed" || job?.status === "cancelled";
 
@@ -117,6 +118,12 @@ const Details = ({ id }: { id: string }) => {
         <FeedbackCard record={record} />
         <AnalysisCard analysis={analysis} />
       </div>
+      <Button asChild variant="outline" size="sm" className="self-start">
+        <Link to={Path.Activity}>
+          <Activity data-icon="inline-start" />
+          View activity
+        </Link>
+      </Button>
     </>
   );
 };

@@ -5,6 +5,7 @@ from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import AsyncEngine
 
 from workbench.api import create_app
+from workbench.infrastructure.database import session_scope
 from workbench.infrastructure.deterministic import generate_demo
 from workbench.logic.backfills import start_backfill
 from workbench.logic.ingestion import ingest
@@ -128,7 +129,7 @@ async def test_real_analysis_repeats_without_overwriting_history_or_batch_progre
         assert (
             await client.get("/api/feedback?status=failed&topic=billing", headers=owner)
         ).json()["total"] == 1
-        async with database.connect() as conn:
+        async with session_scope(database) as conn:
             persisted = (await hydrate(conn, person["workspace_id"], [row["id"]]))[0]
         assert persisted.outputs[-1].run == 4
 

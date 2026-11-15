@@ -4,6 +4,7 @@ version = "0.1.0"
 description = "Durable synthetic feedback enrichment and versioned backfill"
 requires-python = ">=3.12,<3.15"
 dependencies = [
+    "alembic==1.20.0",
     "argon2-cffi==25.1.0",
     "asyncpg==0.32.0",
     "fastapi==0.143.0",
@@ -45,4 +46,4 @@ select = ["E", "F", "I", "B", "UP", "ASYNC"]
 
 [tool.mypy]
 strict = true
-files = ["src", "tests"]
+files = ["src", "tests", "migrations", "tools"]

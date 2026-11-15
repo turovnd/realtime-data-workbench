@@ -2,9 +2,10 @@ import pytest
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncEngine
 
+from workbench.infrastructure.database import session_scope
 from workbench.infrastructure.deterministic import generate_demo
-from workbench.infrastructure.tables import provider_usage
 from workbench.logic.ingestion import ingest
+from workbench.models import ProviderUsage
 from workbench.repositories.inspection import snapshot
 from workbench.schemas.common import Config
 from workbench.schemas.feedback import FeedbackInput
@@ -41,8 +42,8 @@ async def test_worker_can_complete_more_than_twenty_calls_without_losing_usage(
     assert all(
         record.jobs[0].status == "succeeded" and len(record.outputs) == 1 for record in stored
     )
-    async with database.connect() as conn:
-        assert await conn.scalar(select(provider_usage.c.calls)) == 25
+    async with session_scope(database) as session:
+        assert await session.scalar(select(ProviderUsage.calls)) == 25
 
 
 @pytest.mark.parametrize("budget", [0, 2])
@@ -76,5 +77,5 @@ async def test_worker_keeps_zero_and_finite_budgets_effective(
     rejected = [record for record in stored if record.jobs[0].status == "failed"]
     assert len(rejected) == 3 - budget
     assert all(record.jobs[0].error == "Live provider call budget exhausted" for record in rejected)
-    async with database.connect() as conn:
-        assert await conn.scalar(select(provider_usage.c.calls)) == (budget or None)
+    async with session_scope(database) as session:
+        assert await session.scalar(select(ProviderUsage.calls)) == (budget or None)

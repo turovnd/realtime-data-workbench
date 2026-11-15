@@ -1,26 +1,22 @@
-from sqlalchemy import insert, select, update
+"""Persist admission for each paid attempt before contacting the provider."""
+
 from sqlalchemy.ext.asyncio import AsyncEngine
 
-from workbench.infrastructure.tables import provider_usage
+from workbench.infrastructure.database import session_scope
+from workbench.models import ProviderUsage
 from workbench.repositories.coordination import lock_workspace
 
 
 async def reserve_live_call(engine: AsyncEngine, budget: int | None) -> bool:
     """Count every admitted attempt; None removes the ceiling without resetting usage."""
-    async with engine.begin() as conn:
-        await lock_workspace(conn)
-        row = await conn.scalar(
-            select(provider_usage.c.calls).where(provider_usage.c.id == "openrouter")
-        )
-        used = int(row or 0)
+    async with session_scope(engine) as session:
+        await lock_workspace(session)
+        usage = await session.get(ProviderUsage, "openrouter")
+        used = usage.calls if usage is not None else 0
         if budget is not None and used >= budget:
             return False
-        if row is None:
-            await conn.execute(insert(provider_usage).values(id="openrouter", calls=1))
+        if usage is None:
+            session.add(ProviderUsage(id="openrouter", calls=1))
         else:
-            await conn.execute(
-                update(provider_usage)
-                .where(provider_usage.c.id == "openrouter")
-                .values(calls=used + 1)
-            )
+            usage.calls += 1
         return True

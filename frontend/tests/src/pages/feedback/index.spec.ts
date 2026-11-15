@@ -109,3 +109,47 @@ test("keyboard dialog dismissal restores focus and narrow pages do not overflow"
     page.getByRole("button", { name: "Pause updates" })
   ).not.toBeVisible();
 });
+
+test("the guided example is editable and closing it restores focus to its own trigger", async ({
+  page,
+}) => {
+  await enterDemo(page);
+  const example = page.getByRole("button", {
+    name: "Try an example",
+    exact: true,
+  });
+  await example.click();
+  const dialog = page.getByRole("dialog", {
+    name: "Add feedback",
+    exact: true,
+  });
+  const message = dialog.getByRole("textbox", {
+    name: "Customer feedback",
+    exact: true,
+  });
+  await expect(message).toHaveValue(/Every Friday I export feedback/);
+  await expect(
+    dialog.getByText("Synthetic example. You can edit it before submitting.", {
+      exact: true,
+    })
+  ).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(dialog).not.toBeVisible();
+  await expect(example).toBeFocused();
+  await example.click();
+  await message.fill("A customer-specific change to the example.");
+  await dialog
+    .getByRole("button", { name: "Save feedback", exact: true })
+    .click();
+  await expect(
+    page.getByRole("heading", { name: "Feedback #25", exact: true })
+  ).toBeVisible();
+  await expect(
+    page
+      .getByText("A customer-specific change to the example.", { exact: true })
+      .first()
+  ).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Analyze with AI", exact: true })
+  ).toBeDisabled();
+});

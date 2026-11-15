@@ -1,12 +1,34 @@
 from collections.abc import Awaitable, Callable
+from dataclasses import dataclass
+from typing import Protocol
 
 from pydantic import ValidationError
 
 from workbench.logic.errors import TerminalProviderError
+from workbench.logic.prompts import feedback_request
 from workbench.schemas.common import Config
-from workbench.schemas.enrichment import Enrichment
+from workbench.schemas.enrichment import MAX_GENERATED_TEXT_LENGTH, Enrichment
+from workbench.schemas.feedback import MAX_FEEDBACK_LENGTH
+from workbench.schemas.providers import GenerationRequest, GenerationResult
 
 Generate = Callable[[str, Config], Awaitable[str]]
+
+
+class ModelClient(Protocol):
+    async def complete(self, request: GenerationRequest) -> GenerationResult: ...
+
+
+@dataclass(frozen=True)
+class FeedbackGenerator:
+    client: ModelClient
+
+    async def __call__(self, text: str, config: Config) -> str:
+        if not text.strip() or len(text) > MAX_FEEDBACK_LENGTH:
+            raise TerminalProviderError(
+                f"Source feedback must contain 1–{MAX_FEEDBACK_LENGTH} characters"
+            )
+        result = await self.client.complete(feedback_request(text, config))
+        return result.content
 
 
 def _schema_failure(error: ValidationError) -> TerminalProviderError:
@@ -40,13 +62,15 @@ def _schema_failure(error: ValidationError) -> TerminalProviderError:
 async def enrich(text: str, config: Config, *, generate: Generate) -> Enrichment:
     raw = await generate(text, config)
 
-    if len(raw) > 8192:
-        raise TerminalProviderError("Provider output exceeds 8192 characters")
+    if len(raw) > MAX_GENERATED_TEXT_LENGTH:
+        raise TerminalProviderError(
+            f"Provider output exceeds {MAX_GENERATED_TEXT_LENGTH} characters"
+        )
 
     try:
         result = Enrichment.model_validate_json(raw)
     except ValidationError as exc:
-        raise _schema_failure(exc) from exc
+        raise _schema_failure(exc) from None
 
     if any(not quote.strip() or quote not in text for quote in result.evidence):
         raise TerminalProviderError(

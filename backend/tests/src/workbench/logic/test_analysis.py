@@ -4,11 +4,12 @@ import pytest
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncEngine
 
-from workbench.infrastructure.tables import jobs, outputs
+from workbench.infrastructure.deterministic import generate_demo
 from workbench.logic.analysis import start_analysis
 from workbench.logic.errors import ConflictError
 from workbench.logic.ingestion import ingest
 from workbench.logic.synthetic import synthetic_inputs
+from workbench.models import AnalysisJob, AnalysisResult
 from workbench.repositories.inspection import snapshot
 from workbench.repositories.jobs import retry_job
 from workbench.schemas.analysis import AnalysisInput
@@ -41,13 +42,13 @@ async def test_unlimited_runs_keep_recent_responses_and_concurrent_clicks_do_not
         return_exceptions=True,
     )
     assert sum(isinstance(result, ConflictError) for result in results) == 1
-    assert await process_one(database, live_budget=None)
+    assert await process_one(database, generate=generate_demo, live_budget=None)
     for run in range(3, 26):
         pending, inserted = await start_analysis(
             database, "test", initial.id, AnalysisInput(identity=f"run-{run}"), "openrouter/test"
         )
         assert inserted and pending.jobs[-1].run == run
-        assert await process_one(database, live_budget=None)
+        assert await process_one(database, generate=generate_demo, live_budget=None)
     complete = (await snapshot(database)).records[0]
     assert [job.run for job in complete.jobs] == list(range(16, 26))
     assert [output.run for output in complete.outputs] == list(range(16, 26))
@@ -56,8 +57,8 @@ async def test_unlimited_runs_keep_recent_responses_and_concurrent_clicks_do_not
     )
     assert not inserted and len(replay.jobs) == 10
     async with database.connect() as conn:
-        assert await conn.scalar(select(func.count()).select_from(jobs)) == 25
-        assert await conn.scalar(select(func.count()).select_from(outputs)) == 25
+        assert await conn.scalar(select(func.count()).select_from(AnalysisJob)) == 25
+        assert await conn.scalar(select(func.count()).select_from(AnalysisResult)) == 25
     assert (await snapshot(database)).batches == []
 
     await ingest(database, synthetic_inputs("another", 1))
@@ -89,8 +90,8 @@ async def test_recent_history_retains_last_success_after_many_failed_runs(
     assert all(job.status == "failed" for job in complete.jobs)
     assert [output.run for output in complete.outputs] == [1]
     async with database.connect() as conn:
-        assert await conn.scalar(select(func.count()).select_from(jobs)) == 13
-        assert await conn.scalar(select(func.count()).select_from(outputs)) == 1
+        assert await conn.scalar(select(func.count()).select_from(AnalysisJob)) == 13
+        assert await conn.scalar(select(func.count()).select_from(AnalysisResult)) == 1
 
 
 async def test_an_older_failed_run_cannot_be_retried_behind_newer_work(
@@ -108,7 +109,7 @@ async def test_an_older_failed_run_cannot_be_retried_behind_newer_work(
     )
     with pytest.raises(ConflictError, match="latest analysis"):
         await retry_job(database, failed.jobs[0].id)
-    assert await process_one(database, live_budget=1)
+    assert await process_one(database, generate=generate_demo, live_budget=1)
     record = (await snapshot(database)).records[0]
     assert record.outputs[0].run == 2
     assert record.jobs[0].status == "failed" and record.jobs[1].status == "succeeded"

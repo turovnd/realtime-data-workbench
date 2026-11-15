@@ -4,11 +4,12 @@ import pytest
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncEngine
 
-from workbench.infrastructure.tables import feed_views
+from workbench.infrastructure.pagination import decode_cursor, encode_cursor
 from workbench.logic.errors import CursorError, CursorExpired
 from workbench.logic.feed import feed_page
 from workbench.logic.ingestion import ingest
 from workbench.logic.synthetic import synthetic_inputs
+from workbench.models import FeedView
 from workbench.repositories.sessions import create_session, resolve_session
 from workbench.repositories.status import feed_status
 from workbench.schemas.feedback import FeedFilters
@@ -76,11 +77,25 @@ async def test_cursor_expiry_and_active_view_bound(database: AsyncEngine) -> Non
     first = await feed_page(database, "test", FeedFilters())
     async with database.begin() as conn:
         await conn.execute(
-            update(feed_views).values(expires_at=datetime.now(UTC) - timedelta(seconds=1))
+            update(FeedView).values(expires_at=datetime.now(UTC) - timedelta(seconds=1))
         )
     with pytest.raises(CursorExpired):
         await feed_page(database, "test", FeedFilters(), cursor=first.refresh_cursor)
     for index in range(25):
         await feed_page(database, "test", FeedFilters(q=str(index)))
     async with database.connect() as conn:
-        assert len((await conn.execute(select(feed_views.c.id))).all()) == 20
+        assert len((await conn.execute(select(FeedView.id))).all()) == 20
+
+
+async def test_valid_signature_does_not_allow_positions_outside_saved_membership(
+    database: AsyncEngine,
+) -> None:
+    await ingest(database, synthetic_inputs("bounded-view", 1))
+    page = await feed_page(database, "test", FeedFilters())
+    cursor = decode_cursor(page.refresh_cursor)
+    async with database.connect() as conn:
+        secret = await conn.scalar(select(FeedView.secret).where(FeedView.id == cursor.view_id))
+    assert isinstance(secret, str)
+    outside = encode_cursor(cursor.view_id, page.watermark + 2, secret)
+    with pytest.raises(CursorError, match="outside this feedback view"):
+        await feed_page(database, "test", FeedFilters(), cursor=outside)

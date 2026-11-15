@@ -5,12 +5,13 @@ import pytest
 from sqlalchemy import update
 from sqlalchemy.ext.asyncio import AsyncEngine
 
+from workbench.infrastructure.database import session_scope
 from workbench.infrastructure.deterministic import generate_demo
-from workbench.infrastructure.tables import jobs
 from workbench.logic.enrichment import enrich
 from workbench.logic.errors import ConflictError
 from workbench.logic.ingestion import ingest
 from workbench.logic.synthetic import synthetic_inputs
+from workbench.models import AnalysisJob
 from workbench.repositories.inspection import snapshot
 from workbench.repositories.jobs import claim_job, finish_job, retry_job
 
@@ -30,10 +31,10 @@ async def test_expired_lease_fences_stale_provider_result(database: AsyncEngine)
     first = await claim_job(database)
     assert first
     result = await enrich(first.text, first.config, generate=generate_demo)
-    async with database.begin() as conn:
-        await conn.execute(
-            update(jobs)
-            .where(jobs.c.id == first.id)
+    async with session_scope(database) as session:
+        await session.execute(
+            update(AnalysisJob)
+            .where(AnalysisJob.id == first.id)
             .values(lease_until=datetime.now(UTC) - timedelta(seconds=1))
         )
     second = await claim_job(database)

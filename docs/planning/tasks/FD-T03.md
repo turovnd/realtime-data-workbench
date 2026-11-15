@@ -2,7 +2,7 @@
 id: FD-T03
 type: task
 is_task_of: FD-S02
-status: ready-for-review
+status: implemented
 depends_on: ["FD-T02"]
 ---
 
@@ -16,6 +16,7 @@ Give each record a direct review view with the original message and a readable r
 
 ## Acceptance
 
+- The result exposes model provenance and a direct path to Activity; sample output is visibly distinct from a real AI result.
 - Record access is workspace-scoped and has visible missing/error/retry states.
 - The current result includes exact supporting quotes; earlier results remain preserved by the backend.
 - The UI emphasizes the message and result; technical details do not dominate the page.
@@ -26,6 +27,6 @@ API isolation/validation tests and browser direct-link, back-navigation and evid
 
 ## Evidence and status
 
-The direct route and API are verified locally and ready for owner review. The page presents the original message and current result. Earlier results remain preserved by the backend and can be inspected through Activity.
+The direct route and API present the original message and current result; Activity preserves access to earlier results. API isolation, consistent ORM reads and connected browser journeys passed. The product behavior is covered by the linked acceptance criteria.
 
 See [delivery status](../../delivery-status.md) for actual verification and release scope.

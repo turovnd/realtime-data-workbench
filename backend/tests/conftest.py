@@ -6,7 +6,8 @@ import pytest_asyncio
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncEngine
 
-from workbench.infrastructure.database import create_engine, migrate
+from workbench.db import upgrade_database
+from workbench.infrastructure.database import create_engine
 
 
 @pytest_asyncio.fixture
@@ -15,7 +16,8 @@ async def database() -> AsyncIterator[AsyncEngine]:
     if not url:
         pytest.skip("Set TEST_DATABASE_URL to a disposable real PostgreSQL database")
     engine = create_engine(url)
-    await migrate(engine)
+    async with engine.begin() as conn:
+        await conn.run_sync(upgrade_database)
     async with engine.begin() as conn:
         await conn.execute(
             text(

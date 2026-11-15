@@ -6,10 +6,12 @@ from workbench.schemas.backfills import BatchView
 from workbench.schemas.common import Config, Status, StrictModel
 from workbench.schemas.enrichment import OutputView
 
+MAX_FEEDBACK_LENGTH = 4000
+
 
 class FeedbackInput(StrictModel):
     identity: str = Field(min_length=1, max_length=100)
-    text: str = Field(min_length=1, max_length=4000)
+    text: str = Field(min_length=1, max_length=MAX_FEEDBACK_LENGTH)
     channel: Literal["Support", "In-app", "Community"]
 
     @field_validator("text", "identity")

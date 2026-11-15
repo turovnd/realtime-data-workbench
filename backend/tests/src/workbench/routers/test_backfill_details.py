@@ -6,12 +6,13 @@ from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncEngine
 
 from workbench.api import create_app
-from workbench.infrastructure.tables import feed_views, jobs, provider_usage
+from workbench.infrastructure.database import session_scope
 from workbench.logic.analysis import start_analysis
 from workbench.logic.backfills import cancel_backfill, start_backfill
 from workbench.logic.feed import feed_page
 from workbench.logic.ingestion import ingest
 from workbench.logic.synthetic import synthetic_inputs
+from workbench.models import AnalysisJob, FeedView, ProviderUsage
 from workbench.repositories.inspection import snapshot
 from workbench.repositories.sessions import create_session, issue_session, resolve_session
 from workbench.schemas.analysis import AnalysisInput
@@ -23,7 +24,7 @@ pytestmark = pytest.mark.integration
 
 
 async def owner_headers(database: AsyncEngine) -> dict[str, str]:
-    async with database.begin() as conn:
+    async with session_scope(database) as conn:
         token = await issue_session(conn, "test", None)
     return {"Authorization": f"Bearer {token}"}
 
@@ -84,8 +85,8 @@ async def test_batch_pages_keep_selection_and_original_results_after_later_analy
         assert old["output"] == after["items"][0]["output"]
         assert reused["batch"]["selected"] == 2 and reused["batch"]["completed"] == 1
         async with database.connect() as conn:
-            assert await conn.scalar(select(func.count()).select_from(jobs)) == 45
-            assert await conn.scalar(select(func.count()).select_from(provider_usage)) == 0
+            assert await conn.scalar(select(func.count()).select_from(AnalysisJob)) == 45
+            assert await conn.scalar(select(func.count()).select_from(ProviderUsage)) == 0
 
 
 async def test_batch_cursor_is_authenticated_bounded_and_scope_bound(database: AsyncEngine) -> None:
@@ -149,7 +150,7 @@ async def test_batch_cursor_is_authenticated_bounded_and_scope_bound(database: A
             ).status_code == 422
         async with database.begin() as conn:
             await conn.execute(
-                update(feed_views).values(expires_at=datetime.now(UTC) - timedelta(seconds=1))
+                update(FeedView).values(expires_at=datetime.now(UTC) - timedelta(seconds=1))
             )
         assert (
             await client.get(path, headers=headers, params={"cursor": cursor})
@@ -157,7 +158,7 @@ async def test_batch_cursor_is_authenticated_bounded_and_scope_bound(database: A
         for _ in range(25):
             assert (await client.get(path, headers=headers)).status_code == 200
         async with database.connect() as conn:
-            assert await conn.scalar(select(func.count()).select_from(feed_views)) == 20
+            assert await conn.scalar(select(func.count()).select_from(FeedView)) == 20
 
 
 async def test_batch_failed_and_cancelled_jobs_never_show_previous_version_outputs(

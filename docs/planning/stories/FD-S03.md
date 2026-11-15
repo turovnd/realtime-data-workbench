@@ -2,7 +2,7 @@
 id: FD-S03
 type: story
 is_story_of: FD-E02
-status: ready-for-review
+status: implemented
 ---
 
 # FD-S03: Add feedback and inspect processing
@@ -16,4 +16,4 @@ A reviewer can add a message, see real processing state and understand a failure
 - [FD-T04: Durable enrichment foundation](../tasks/FD-T04.md)
 - [FD-T05: Add feedback through the generated API](../tasks/FD-T05.md)
 
-Acceptance requires the linked task outcomes and relevant user journey to pass. Owner review remains a separate checkpoint; planned stories are not implemented.
+Acceptance requires the linked task outcomes and relevant user journey to pass. Technical checks and the published runtime are recorded separately in the release ledger.

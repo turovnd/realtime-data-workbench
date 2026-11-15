@@ -1,6 +1,7 @@
 import { Link, useLocation } from "react-router-dom";
 import { ArrowRight, Inbox, LoaderCircle } from "lucide-react";
 
+import { feedbackPath } from "@/router/paths";
 import { currentOutput, type FeedbackRecord } from "@/api";
 import { useInfiniteScroll } from "@/hooks";
 import {
@@ -120,7 +121,7 @@ export const Feed = ({
                 disabled={disabled}
               />
               <Link
-                to={`/feedback/${encodeURIComponent(record.id)}${location.search}`}
+                to={`${feedbackPath(record.id)}${location.search}`}
                 aria-label={`Open feedback ${record.sequence}`}
                 className="flex min-w-0 flex-1 items-center gap-4 rounded-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
               >

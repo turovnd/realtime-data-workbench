@@ -1,7 +1,7 @@
 import { topics } from "./labels";
 import { Search, X } from "lucide-react";
 
-import type { FilterState } from "@/hooks";
+import type { FilterState } from "./use-filters";
 import {
   Button,
   Input,

@@ -6,12 +6,13 @@ from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncEngine
 
 from workbench.api import create_app
-from workbench.infrastructure.tables import feed_views, jobs, outputs, provider_usage, state
+from workbench.infrastructure.database import session_scope
 from workbench.logic.analysis import start_analysis
 from workbench.logic.backfills import start_backfill
 from workbench.logic.feed import feed_page
 from workbench.logic.ingestion import ingest
 from workbench.logic.synthetic import synthetic_inputs
+from workbench.models import AnalysisJob, AnalysisResult, FeedView, ProviderUsage, Workspace
 from workbench.repositories.activity import activity_ids
 from workbench.repositories.sessions import create_session, issue_session
 from workbench.schemas.analysis import AnalysisInput
@@ -23,7 +24,7 @@ pytestmark = pytest.mark.integration
 
 
 async def headers(database: AsyncEngine) -> dict[str, str]:
-    async with database.begin() as conn:
+    async with session_scope(database) as conn:
         token = await issue_session(conn, "test", None)
     return {"Authorization": f"Bearer {token}"}
 
@@ -31,10 +32,10 @@ async def headers(database: AsyncEngine) -> dict[str, str]:
 async def durable_counts(database: AsyncEngine) -> tuple[int, int, int, int]:
     async with database.connect() as conn:
         return (
-            int(await conn.scalar(select(func.count()).select_from(jobs)) or 0),
-            int(await conn.scalar(select(func.count()).select_from(outputs)) or 0),
-            int(await conn.scalar(select(func.sum(provider_usage.c.calls))) or 0),
-            int(await conn.scalar(select(state.c.cursor).where(state.c.id == "test")) or 0),
+            int(await conn.scalar(select(func.count()).select_from(AnalysisJob)) or 0),
+            int(await conn.scalar(select(func.count()).select_from(AnalysisResult)) or 0),
+            int(await conn.scalar(select(func.sum(ProviderUsage.calls))) or 0),
+            int(await conn.scalar(select(Workspace.cursor).where(Workspace.id == "test")) or 0),
         )
 
 
@@ -75,7 +76,7 @@ async def test_activity_includes_automatic_individual_and_bulk_exact_results(
         # Availability is a scheduling field; make earlier scheduling values explicitly old.
         async with database.begin() as conn:
             await conn.execute(
-                update(jobs).values(available_at=datetime.now(UTC) - timedelta(days=1))
+                update(AnalysisJob).values(available_at=datetime.now(UTC) - timedelta(days=1))
             )
         older = min(first["items"], key=lambda item: item["feedback"]["sequence"])
         record, _ = await start_analysis(
@@ -110,7 +111,7 @@ async def test_activity_freezes_order_and_membership_through_completion_and_new_
     database: AsyncEngine,
 ) -> None:
     await ingest(database, synthetic_inputs("initial", 12))
-    async with database.connect() as conn:
+    async with session_scope(database) as conn:
         expected = [event.removeprefix("job:") for event in (await activity_ids(conn, "test"))[0]]
     async with AsyncClient(
         transport=ASGITransport(app=create_app(database)),
@@ -182,7 +183,7 @@ async def test_activity_scopes_cursors_expires_bounds_and_handles_empty_workspac
             ).status_code == 422
         async with database.begin() as conn:
             await conn.execute(
-                update(feed_views).values(expires_at=datetime.now(UTC) - timedelta(seconds=1))
+                update(FeedView).values(expires_at=datetime.now(UTC) - timedelta(seconds=1))
             )
         assert (
             await client.get("/api/activity", headers=owner, params={"cursor": cursor})
@@ -192,4 +193,4 @@ async def test_activity_scopes_cursors_expires_bounds_and_handles_empty_workspac
             assert (await client.get("/api/activity", headers=owner)).status_code == 200
         assert await durable_counts(database) == before
         async with database.connect() as conn:
-            assert await conn.scalar(select(func.count()).select_from(feed_views)) == 20
+            assert await conn.scalar(select(func.count()).select_from(FeedView)) == 20

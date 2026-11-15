@@ -3,9 +3,10 @@ import json
 import pytest
 
 from workbench.infrastructure.deterministic import generate_demo
-from workbench.logic.enrichment import enrich
+from workbench.logic.enrichment import FeedbackGenerator, enrich
 from workbench.logic.errors import TerminalProviderError
 from workbench.logic.synthetic import synthetic_inputs
+from workbench.schemas.providers import GenerationRequest, GenerationResult
 
 
 async def test_demo_is_repeatable_and_quotes_source() -> None:
@@ -117,3 +118,31 @@ async def test_cyrillic_quote_is_not_normalized_to_a_different_source() -> None:
 
     with pytest.raises(TerminalProviderError, match="^Provider evidence validation failed"):
         await enrich(source, "v1", generate=generate)
+
+
+class RecordingModel:
+    def __init__(self, output: str) -> None:
+        self.output = output
+        self.requests: list[GenerationRequest] = []
+
+    async def complete(self, request: GenerationRequest) -> GenerationResult:
+        self.requests.append(request)
+        return GenerationResult(content=self.output)
+
+
+async def test_feedback_generation_can_use_an_independent_typed_model_client() -> None:
+    model = RecordingModel(
+        '{"topic":"other","intent":"unclear","summary":"Observation","evidence":["source"]}'
+    )
+    result = await enrich("source", "v2", generate=FeedbackGenerator(model))
+    assert result.evidence == ["source"]
+    assert len(model.requests) == 1
+    assert json.loads(model.requests[0].source) == {"source_feedback": "source"}
+
+
+@pytest.mark.parametrize("source", ["", " \n", "x" * 4001])
+async def test_invalid_source_never_reaches_the_model(source: str) -> None:
+    model = RecordingModel("{}")
+    with pytest.raises(TerminalProviderError, match="Source feedback must contain"):
+        await FeedbackGenerator(model)(source, "v1")
+    assert model.requests == []

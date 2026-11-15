@@ -1,9 +1,11 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useLocation, useNavigate } from "react-router-dom";
-import { LoaderCircle } from "lucide-react";
+import { FileText, LoaderCircle } from "lucide-react";
 
+import { feedbackPath } from "@/router/paths";
 import { adapter, getSession, type FeedbackInput } from "@/api";
+import { submitFeedback, type FeedbackSubmission } from "@/api/feedback";
 import {
   Alert,
   AlertDescription,
@@ -15,6 +17,7 @@ import {
   DialogHeader,
   DialogTitle,
   Field,
+  FieldDescription,
   FieldGroup,
   FieldLabel,
   Select,
@@ -26,17 +29,25 @@ import {
   Textarea,
 } from "@/components/ui";
 
+import { exampleFeedback } from "./example-feedback";
+
 type Props = {
-  open: boolean;
+  initialText: string;
+  liveAnalysis: boolean;
   onOpenChange: (open: boolean) => void;
   onCloseFocus: () => void;
 };
 
-export const AddFeedback = ({ open, onOpenChange, onCloseFocus }: Props) => {
+export const AddFeedback = ({
+  initialText,
+  liveAnalysis,
+  onOpenChange,
+  onCloseFocus,
+}: Props) => {
   const navigate = useNavigate();
   const location = useLocation();
   const client = useQueryClient();
-  const [text, setText] = useState("");
+  const [text, setText] = useState(initialText);
   const [channel, setChannel] = useState<FeedbackInput["channel"]>("Support");
   const [identity, setIdentity] = useState(() => crypto.randomUUID());
   const mounted = useRef(true);
@@ -49,12 +60,12 @@ export const AddFeedback = ({ open, onOpenChange, onCloseFocus }: Props) => {
   }, []);
 
   const create = useMutation({
-    mutationFn: ({
-      input,
-    }: {
-      input: FeedbackInput;
-      session: ReturnType<typeof getSession>;
-    }) => adapter.create(input),
+    mutationFn: (submission: FeedbackSubmission) =>
+      submitFeedback(submission, {
+        adapter,
+        getSession,
+        isOnline: () => navigator.onLine,
+      }),
     onSuccess: async (record, submission) => {
       if (
         !submission.session ||
@@ -70,7 +81,7 @@ export const AddFeedback = ({ open, onOpenChange, onCloseFocus }: Props) => {
       if (!mounted.current || submission.session.token !== getSession()?.token)
         return;
       onOpenChange(false);
-      navigate(`/feedback/${encodeURIComponent(record.id)}${location.search}`);
+      navigate(`${feedbackPath(record.id)}${location.search}`);
     },
   });
 
@@ -95,8 +106,9 @@ export const AddFeedback = ({ open, onOpenChange, onCloseFocus }: Props) => {
   };
 
   return (
-    <Dialog open={open} onOpenChange={changeOpen}>
+    <Dialog open onOpenChange={changeOpen}>
       <DialogContent
+        className="max-h-[90svh] overflow-y-auto sm:max-w-xl"
         onCloseAutoFocus={event => {
           event.preventDefault();
           onCloseFocus();
@@ -105,17 +117,39 @@ export const AddFeedback = ({ open, onOpenChange, onCloseFocus }: Props) => {
         <DialogHeader>
           <DialogTitle>Add feedback</DialogTitle>
           <DialogDescription>
-            Paste a customer message. We’ll organize and summarize it for you.
+            {liveAnalysis
+              ? "Add a message to get an AI summary, topic and supporting quotes."
+              : "Save a customer message to explore the feedback workflow."}
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={submit} className="flex flex-col gap-6">
           <FieldGroup>
             <Field>
-              <FieldLabel htmlFor="feedback-text">Customer feedback</FieldLabel>
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <FieldLabel htmlFor="feedback-text">
+                  Customer feedback
+                </FieldLabel>
+                {!text.trim() && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    disabled={create.isPending}
+                    onClick={() => {
+                      setText(exampleFeedback.text);
+                      setChannel(exampleFeedback.channel);
+                      create.reset();
+                    }}
+                  >
+                    <FileText data-icon="inline-start" />
+                    Use an example
+                  </Button>
+                )}
+              </div>
               <Textarea
                 id="feedback-text"
                 placeholder="What did the customer say?"
-                className="min-h-36"
+                className="min-h-48"
                 autoFocus
                 value={text}
                 maxLength={4000}
@@ -126,6 +160,11 @@ export const AddFeedback = ({ open, onOpenChange, onCloseFocus }: Props) => {
                   if (create.isError) setIdentity(crypto.randomUUID());
                 }}
               />
+              <FieldDescription>
+                {text === exampleFeedback.text
+                  ? "Synthetic example. You can edit it before submitting."
+                  : `${text.length.toLocaleString()} / 4,000 characters`}
+              </FieldDescription>
             </Field>
             <Field>
               <FieldLabel htmlFor="feedback-source">Source</FieldLabel>
@@ -157,6 +196,11 @@ export const AddFeedback = ({ open, onOpenChange, onCloseFocus }: Props) => {
               <AlertDescription>{create.error.message}</AlertDescription>
             </Alert>
           )}
+          <p className="text-xs text-muted-foreground">
+            {liveAnalysis
+              ? "Submitting sends this text to our AI provider. Use sample or non-sensitive feedback."
+              : "This mode uses sample analysis. No message is sent to an AI provider."}
+          </p>
           <DialogFooter>
             <Button
               type="button"
@@ -173,7 +217,11 @@ export const AddFeedback = ({ open, onOpenChange, onCloseFocus }: Props) => {
                   data-icon="inline-start"
                 />
               )}
-              {create.isPending ? "Saving…" : "Save feedback"}
+              {create.isPending
+                ? "Saving…"
+                : liveAnalysis
+                  ? "Analyze feedback"
+                  : "Save feedback"}
             </Button>
           </DialogFooter>
         </form>

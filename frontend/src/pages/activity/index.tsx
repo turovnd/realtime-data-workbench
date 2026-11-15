@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import { Activity, ArrowRight } from "lucide-react";
 
+import { Path } from "@/router/paths";
 import { useInfiniteScroll } from "@/hooks";
 import { PageLoading, PageMessage } from "@/components/layout";
 import {
@@ -86,7 +87,7 @@ export const ActivityPage = () => {
               ? "Check your connection and try again."
               : "Reconnect to see your analysis runs."
           }
-          backTo="/feedback"
+          backTo={Path.Feedback}
         >
           {online && (
             <Button variant="outline" onClick={retry}>
@@ -108,7 +109,7 @@ export const ActivityPage = () => {
           </EmptyHeader>
           <EmptyContent>
             <Button asChild>
-              <Link to="/feedback">
+              <Link to={Path.Feedback}>
                 Open inbox
                 <ArrowRight data-icon="inline-end" />
               </Link>

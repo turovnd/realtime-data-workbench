@@ -1,15 +1,21 @@
+"""Durable analysis admission, leases and fenced completion."""
+
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from uuid import uuid4
 
-from sqlalchemy import and_, case, func, insert, or_, select, update
-from sqlalchemy.ext.asyncio import AsyncConnection, AsyncEngine
+from sqlalchemy import and_, case, func, or_, select, update
+from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession
 
-from workbench.infrastructure.tables import jobs, outputs, records, state
+from workbench.infrastructure.database import session_scope
 from workbench.logic.errors import ConflictError
+from workbench.models import AnalysisJob, AnalysisResult, Feedback, Workspace
 from workbench.repositories.coordination import changed, lock_workspace
 from workbench.schemas.common import Config
 from workbench.schemas.enrichment import Enrichment
+
+MAX_ATTEMPTS = 3
+MAX_ACTIVE_JOBS = 2
 
 
 @dataclass(frozen=True)
@@ -25,18 +31,18 @@ class Claim:
     run: int
 
 
-async def find_analysis_request(conn: AsyncConnection, record_id: str, identity: str) -> bool:
+async def find_analysis_request(session: AsyncSession, record_id: str, identity: str) -> bool:
     return bool(
-        await conn.scalar(
-            select(jobs.c.id).where(
-                jobs.c.record_id == record_id, jobs.c.request_identity == identity
+        await session.scalar(
+            select(AnalysisJob.id).where(
+                AnalysisJob.record_id == record_id, AnalysisJob.request_identity == identity
             )
         )
     )
 
 
 async def enqueue(
-    conn: AsyncConnection,
+    session: AsyncSession,
     record_id: str,
     config: Config,
     origin: str,
@@ -45,21 +51,23 @@ async def enqueue(
     provider: str = "deterministic-rules/1",
     request_identity: str | None = None,
 ) -> None:
-    latest = await conn.scalar(select(func.max(jobs.c.run)).where(jobs.c.record_id == record_id))
-    active = await conn.scalar(
-        select(jobs.c.id)
-        .where(jobs.c.record_id == record_id, jobs.c.status.in_(["queued", "leased"]))
+    latest = await session.scalar(
+        select(func.max(AnalysisJob.run)).where(AnalysisJob.record_id == record_id)
+    )
+    active = await session.scalar(
+        select(AnalysisJob.id)
+        .where(AnalysisJob.record_id == record_id, AnalysisJob.status.in_(["queued", "leased"]))
         .limit(1)
     )
     if active:
         raise ConflictError("Analysis is already in progress for this feedback")
-    await conn.execute(
-        insert(jobs).values(
+    session.add(
+        AnalysisJob(
             id=str(uuid4()),
             workspace_id=workspace_id,
             record_id=record_id,
             config=config,
-            run=int(latest or 0) + 1,
+            run=(latest or 0) + 1,
             request_identity=request_identity,
             origin=origin,
             provider=provider,
@@ -74,76 +82,75 @@ async def enqueue(
 
 
 async def claim_job(engine: AsyncEngine, lease_seconds: int = 30) -> Claim | None:
-    async with engine.begin() as conn:
-        await lock_workspace(conn)
+    async with session_scope(engine) as session:
+        await lock_workspace(session)
         now = datetime.now(UTC)
-        exhausted = await conn.execute(
-            update(jobs)
-            .where(jobs.c.status == "leased", jobs.c.lease_until <= now, jobs.c.attempts >= 3)
-            .values(status="failed", error="Lease expired after three attempts", lease_until=None)
-        )
-        if exhausted.rowcount:
-            await conn.execute(update(state).values(cursor=state.c.cursor + 1))
-        active = int(
-            await conn.scalar(
-                select(func.count())
-                .select_from(jobs)
-                .where(jobs.c.status == "leased", jobs.c.lease_until > now)
-            )
-            or 0
-        )
-        if active >= 2:
-            return None
-        row = (
-            (
-                await conn.execute(
-                    select(jobs, records.c.text)
-                    .join(records, records.c.id == jobs.c.record_id)
-                    .where(
-                        jobs.c.attempts < 3,
-                        or_(
-                            and_(jobs.c.status == "queued", jobs.c.available_at <= now),
-                            and_(jobs.c.status == "leased", jobs.c.lease_until <= now),
-                        ),
-                    )
-                    .order_by(
-                        case((jobs.c.origin.in_(["live", "analysis"]), 0), else_=1),
-                        jobs.c.available_at,
-                        jobs.c.id,
-                    )
-                    .with_for_update(skip_locked=True)
-                    .limit(1)
+        exhausted_workspaces = set(
+            await session.scalars(
+                update(AnalysisJob)
+                .where(
+                    AnalysisJob.status == "leased",
+                    AnalysisJob.lease_until <= now,
+                    AnalysisJob.attempts >= MAX_ATTEMPTS,
                 )
+                .values(
+                    status="failed", error="Lease expired after three attempts", lease_until=None
+                )
+                .returning(AnalysisJob.workspace_id)
             )
-            .mappings()
-            .first()
         )
-        if row is None:
+        if exhausted_workspaces:
+            await session.execute(
+                update(Workspace)
+                .where(Workspace.id.in_(exhausted_workspaces))
+                .values(cursor=Workspace.cursor + 1)
+            )
+        active = await session.scalar(
+            select(func.count())
+            .select_from(AnalysisJob)
+            .where(AnalysisJob.status == "leased", AnalysisJob.lease_until > now)
+        )
+        if (active or 0) >= MAX_ACTIVE_JOBS:
             return None
-        fence, attempts = int(row["fence"]) + 1, int(row["attempts"]) + 1
-        await conn.execute(
-            update(jobs)
-            .where(jobs.c.id == row["id"])
-            .values(
-                status="leased",
-                fence=fence,
-                attempts=attempts,
-                lease_until=now + timedelta(seconds=lease_seconds),
-                error=None,
+        candidate = (
+            await session.execute(
+                select(AnalysisJob, Feedback.text)
+                .join(Feedback, Feedback.id == AnalysisJob.record_id)
+                .where(
+                    AnalysisJob.attempts < MAX_ATTEMPTS,
+                    or_(
+                        and_(AnalysisJob.status == "queued", AnalysisJob.available_at <= now),
+                        and_(AnalysisJob.status == "leased", AnalysisJob.lease_until <= now),
+                    ),
+                )
+                .order_by(
+                    case((AnalysisJob.origin.in_(["live", "analysis"]), 0), else_=1),
+                    AnalysisJob.available_at,
+                    AnalysisJob.id,
+                )
+                .with_for_update(skip_locked=True, of=AnalysisJob)
+                .limit(1)
             )
-        )
-        await changed(conn, str(row["workspace_id"]))
-        config: Config = "v2" if row["config"] == "v2" else "v1"
+        ).first()
+        if candidate is None:
+            return None
+        job, source = candidate
+        job.status = "leased"
+        job.fence += 1
+        job.attempts += 1
+        job.lease_until = now + timedelta(seconds=lease_seconds)
+        job.error = None
+        await changed(session, job.workspace_id)
         return Claim(
-            str(row["id"]),
-            str(row["record_id"]),
-            str(row["text"]),
-            config,
-            fence,
-            attempts,
-            str(row["workspace_id"]),
-            str(row["provider"]),
-            int(row["run"]),
+            id=job.id,
+            record_id=job.record_id,
+            text=source,
+            config=job.config,
+            fence=job.fence,
+            attempts=job.attempts,
+            workspace_id=job.workspace_id,
+            provider=job.provider,
+            run=job.run,
         )
 
 
@@ -154,22 +161,24 @@ async def finish_job(
     error: str | None = None,
     retryable: bool = True,
 ) -> bool:
-    async with engine.begin() as conn:
-        await lock_workspace(conn)
+    async with session_scope(engine) as session:
+        await lock_workspace(session)
         now = datetime.now(UTC)
-        current = await conn.scalar(
-            select(jobs.c.id).where(
-                jobs.c.id == claim.id,
-                jobs.c.status == "leased",
-                jobs.c.fence == claim.fence,
-                jobs.c.lease_until > now,
+        job = await session.scalar(
+            select(AnalysisJob)
+            .where(
+                AnalysisJob.id == claim.id,
+                AnalysisJob.status == "leased",
+                AnalysisJob.fence == claim.fence,
+                AnalysisJob.lease_until > now,
             )
+            .with_for_update()
         )
-        if not current:
+        if job is None:
             return False
         if result is not None:
-            await conn.execute(
-                insert(outputs).values(
+            session.add(
+                AnalysisResult(
                     id=str(uuid4()),
                     workspace_id=claim.workspace_id,
                     record_id=claim.record_id,
@@ -180,54 +189,43 @@ async def finish_job(
                     created_at=now,
                 )
             )
-        status = (
-            "succeeded" if result else ("queued" if retryable and claim.attempts < 3 else "failed")
-        )
-        await conn.execute(
-            update(jobs)
-            .where(jobs.c.id == claim.id)
-            .values(
-                status=status,
-                lease_until=None,
-                error=error,
-                available_at=now + timedelta(seconds=2**claim.attempts),
-            )
-        )
-        await changed(conn, claim.workspace_id)
+            job.status = "succeeded"
+        else:
+            job.status = "queued" if retryable and claim.attempts < MAX_ATTEMPTS else "failed"
+        job.lease_until = None
+        job.error = error
+        job.available_at = now + timedelta(seconds=2**claim.attempts)
+        await changed(session, claim.workspace_id)
         return True
 
 
 async def retry_job(engine: AsyncEngine, job_id: str, workspace_id: str = "test") -> None:
-    async with engine.begin() as conn:
-        await lock_workspace(conn)
-        job = (
-            (
-                await conn.execute(
-                    select(jobs).where(jobs.c.workspace_id == workspace_id, jobs.c.id == job_id)
-                )
+    async with session_scope(engine) as session:
+        await lock_workspace(session)
+        job = await session.scalar(
+            select(AnalysisJob).where(
+                AnalysisJob.workspace_id == workspace_id, AnalysisJob.id == job_id
             )
-            .mappings()
-            .first()
         )
-        if not job or job["status"] not in ("failed", "cancelled") or job["attempts"] >= 3:
+        if job is None or job.status not in ("failed", "cancelled") or job.attempts >= MAX_ATTEMPTS:
             raise ConflictError("Only terminal jobs with remaining attempts can be retried")
-        latest = await conn.scalar(
-            select(func.max(jobs.c.run)).where(jobs.c.record_id == job["record_id"])
+        latest = await session.scalar(
+            select(func.max(AnalysisJob.run)).where(AnalysisJob.record_id == job.record_id)
         )
-        if job["run"] != latest:
+        if job.run != latest:
             raise ConflictError("Only the latest analysis can be retried")
-        active = await conn.scalar(
-            select(jobs.c.id)
-            .where(jobs.c.record_id == job["record_id"], jobs.c.status.in_(["queued", "leased"]))
+        active = await session.scalar(
+            select(AnalysisJob.id)
+            .where(
+                AnalysisJob.record_id == job.record_id,
+                AnalysisJob.status.in_(["queued", "leased"]),
+            )
             .limit(1)
         )
         if active:
             raise ConflictError("Analysis is already in progress for this feedback")
-        await conn.execute(
-            update(jobs)
-            .where(jobs.c.workspace_id == workspace_id, jobs.c.id == job_id)
-            .values(
-                status="queued", available_at=datetime.now(UTC), error=None, fence=jobs.c.fence + 1
-            )
-        )
-        await changed(conn, workspace_id)
+        job.status = "queued"
+        job.available_at = datetime.now(UTC)
+        job.error = None
+        job.fence += 1
+        await changed(session, workspace_id)

@@ -3,6 +3,7 @@ import { useEffect } from "react";
 import { Link, NavLink, useLocation } from "react-router-dom";
 import { Activity, Inbox, LogOut, MessageSquareText } from "lucide-react";
 
+import { Path } from "@/router/paths";
 import type { Identity } from "@/api";
 import {
   Avatar,
@@ -57,17 +58,20 @@ const Navigation = () => {
       <SidebarMenuItem>
         <SidebarMenuButton
           asChild
-          isActive={location.pathname.startsWith("/feedback")}
+          isActive={location.pathname.startsWith(Path.Feedback)}
         >
-          <NavLink to="/feedback">
+          <NavLink to={Path.Feedback}>
             <Inbox />
             <span>Inbox</span>
           </NavLink>
         </SidebarMenuButton>
       </SidebarMenuItem>
       <SidebarMenuItem>
-        <SidebarMenuButton asChild isActive={location.pathname === "/activity"}>
-          <NavLink to="/activity">
+        <SidebarMenuButton
+          asChild
+          isActive={location.pathname === Path.Activity}
+        >
+          <NavLink to={Path.Activity}>
             <Activity />
             <span>Activity</span>
           </NavLink>
@@ -84,8 +88,8 @@ export const WorkspaceShell = ({
   signingOut,
 }: Props) => {
   const location = useLocation();
-  const detail = location.pathname.startsWith("/feedback/");
-  const title = location.pathname === "/activity" ? "Activity" : "Inbox";
+  const detail = location.pathname.startsWith(`${Path.Feedback}/`);
+  const title = location.pathname === Path.Activity ? "Activity" : "Inbox";
   const demo = identity.kind !== "account";
 
   useEffect(() => {
@@ -109,7 +113,7 @@ export const WorkspaceShell = ({
         </a>
         <Sidebar variant="inset">
           <SidebarHeader className="px-4 py-5">
-            <Link to="/feedback" className="flex items-center gap-3">
+            <Link to={Path.Feedback} className="flex items-center gap-3">
               <span className="flex size-9 items-center justify-center rounded-lg bg-primary text-primary-foreground">
                 <MessageSquareText className="size-5" />
               </span>
@@ -155,7 +159,9 @@ export const WorkspaceShell = ({
                 <BreadcrumbItem>
                   {detail ? (
                     <BreadcrumbLink asChild>
-                      <Link to={`/feedback${location.search}`}>Inbox</Link>
+                      <Link to={`${Path.Feedback}${location.search}`}>
+                        Inbox
+                      </Link>
                     </BreadcrumbLink>
                   ) : (
                     <BreadcrumbPage>{title}</BreadcrumbPage>

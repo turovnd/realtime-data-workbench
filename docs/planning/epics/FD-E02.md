@@ -1,7 +1,7 @@
 ---
 id: FD-E02
 type: epic
-status: ready-for-review
+status: implemented
 ---
 
 # FD-E02: Process and reprocess reliably

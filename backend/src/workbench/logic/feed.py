@@ -1,15 +1,11 @@
 """Authenticated cursor interpretation and stable, bounded feed views."""
 
-import hashlib
-import hmac
-import secrets
-from datetime import UTC, datetime, timedelta
-from uuid import uuid4
-
 from sqlalchemy.ext.asyncio import AsyncEngine
 
-from workbench.logic.cursors import decode_cursor, encode_cursor
-from workbench.logic.errors import CursorError, CursorExpired
+from workbench.infrastructure.database import session_scope
+from workbench.infrastructure.pagination import encode_cursor
+from workbench.logic.errors import CursorError
+from workbench.logic.pagination import create_view, resume_view
 from workbench.repositories import views
 from workbench.repositories.coordination import lock_workspace
 from workbench.repositories.feedback import hydrate
@@ -26,44 +22,28 @@ async def feed_page(
     if not 1 <= limit <= 50:
         raise CursorError("Limit must be between 1 and 50")
     filter_key = filters.model_dump_json()
-    async with engine.begin() as conn:
-        await lock_workspace(conn)
-        now = datetime.now(UTC)
+    async with session_scope(engine) as session:
+        await lock_workspace(session)
         if cursor is not None:
-            view_id, before, payload, signature = decode_cursor(cursor)
-            view = await views.get_view(conn, view_id)
-            if not view or view.workspace_id != workspace_id:
-                raise CursorError("The cursor does not match this workspace and filter")
-            if view.expires_at <= now:
-                raise CursorExpired("This view expired. Refresh to open a current view.")
-            expected = hmac.new(view.secret.encode(), payload.encode(), hashlib.sha256).hexdigest()
-            if not hmac.compare_digest(signature, expected) or view.filter_key != filter_key:
-                raise CursorError("The cursor does not match this workspace and filter")
+            continuation = await resume_view(session, cursor, workspace_id, filter_key)
+            view, before = continuation.view, continuation.position
+            if before > view.watermark + 1:
+                raise CursorError("The cursor position is outside this feedback view")
         else:
-            await views.prune_views(conn, workspace_id, now)
-            ids, watermark = await views.matching_ids(conn, workspace_id, filters)
+            ids, watermark = await views.matching_ids(session, workspace_id, filters)
+            view = await create_view(session, workspace_id, filter_key, ids, watermark)
             before = watermark + 1
-            view = views.StoredView(
-                id=str(uuid4()),
-                workspace_id=workspace_id,
-                filter_key=filter_key,
-                record_ids=ids,
-                watermark=watermark,
-                secret=secrets.token_urlsafe(32),
-                expires_at=now + timedelta(minutes=10),
-            )
-            await views.store_view(conn, view)
-        selected = await views.page_ids(conn, workspace_id, view.record_ids, before, limit)
+        selected = await views.page_ids(session, workspace_id, view.record_ids, before, limit)
         page = selected[:limit]
         next_cursor = (
             encode_cursor(view.id, page[-1][1], view.secret) if len(selected) > limit else None
         )
         return FeedPage(
             workspace_id=workspace_id,
-            records=await hydrate(conn, workspace_id, [row[0] for row in page]),
+            records=await hydrate(session, workspace_id, [row[0] for row in page]),
             next_cursor=next_cursor,
             refresh_cursor=encode_cursor(view.id, view.watermark + 1, view.secret),
             watermark=view.watermark,
-            revision=await views.revision(conn, workspace_id),
+            revision=await views.revision(session, workspace_id),
             total=len(view.record_ids),
         )

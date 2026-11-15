@@ -2,15 +2,21 @@ from datetime import UTC, datetime, timedelta
 from uuid import UUID
 
 import pytest
-from sqlalchemy import func, insert, select, update
+from sqlalchemy import event, func, insert, select, update
 from sqlalchemy.ext.asyncio import AsyncEngine
 
-from workbench.infrastructure.tables import jobs, outputs, provider_usage, state
+from workbench.infrastructure.database import session_scope
+from workbench.infrastructure.pagination import decode_cursor
 from workbench.logic.activity import activity_page
-from workbench.logic.activity_cursors import decode_activity_cursor
+from workbench.logic.backfills import start_backfill
 from workbench.logic.ingestion import ingest
-from workbench.schemas.activity import FeedbackActivity
+from workbench.logic.synthetic import synthetic_inputs
+from workbench.models import AnalysisJob, AnalysisResult, Feedback, ProviderUsage, Workspace
+from workbench.repositories.activity_items import hydrate_activity
+from workbench.schemas.activity import ActivityItem, BatchActivity, FeedbackActivity
+from workbench.schemas.backfills import BackfillInput
 from workbench.schemas.feedback import FeedbackInput
+from workbench.workers.processing import process_one
 
 pytestmark = pytest.mark.integration
 
@@ -23,12 +29,14 @@ async def test_activity_read_window_pages_large_terminal_history_without_changin
         [FeedbackInput(identity="long-history", text="Export stops early.", channel="Support")],
     )
     scheduled = datetime(2026, 1, 1, tzinfo=UTC)
-    async with database.begin() as conn:
-        record_id = await conn.scalar(select(jobs.c.record_id))
+    async with session_scope(database) as session:
+        record_id = await session.scalar(select(AnalysisJob.record_id))
         assert record_id is not None
-        await conn.execute(update(jobs).values(status="cancelled", available_at=scheduled))
-        await conn.execute(
-            insert(jobs),
+        await session.execute(
+            update(AnalysisJob).values(status="cancelled", available_at=scheduled)
+        )
+        await session.execute(
+            insert(AnalysisJob),
             [
                 {
                     "id": str(UUID(int=run)),
@@ -46,8 +54,8 @@ async def test_activity_read_window_pages_large_terminal_history_without_changin
                 for run in range(2, 6003)
             ],
         )
-        await conn.execute(insert(provider_usage).values(id="openrouter", calls=7))
-        revision = await conn.scalar(select(state.c.cursor).where(state.c.id == "test"))
+        await session.execute(insert(ProviderUsage).values(id="openrouter", calls=7))
+        revision = await session.scalar(select(Workspace.cursor).where(Workspace.id == "test"))
 
     page = await activity_page(database, "test", limit=50)
     first = page
@@ -67,7 +75,7 @@ async def test_activity_read_window_pages_large_terminal_history_without_changin
             seen_statuses.add(item.feedback.job.status)
         if page.next_cursor is None:
             break
-        positions.append(decode_activity_cursor(page.next_cursor)[1])
+        positions.append(decode_cursor(page.next_cursor).position)
         page = await activity_page(database, "test", limit=50, cursor=page.next_cursor)
 
     assert seen_runs == list(range(6002, 2, -1))
@@ -76,8 +84,67 @@ async def test_activity_read_window_pages_large_terminal_history_without_changin
     assert seen_statuses == {"failed", "cancelled"}
     refreshed = await activity_page(database, "test", limit=50, cursor=first.refresh_cursor)
     assert refreshed.items == first.items and refreshed.has_older
-    async with database.connect() as conn:
-        assert await conn.scalar(select(func.count()).select_from(jobs)) == 6002
-        assert await conn.scalar(select(func.count()).select_from(outputs)) == 0
-        assert await conn.scalar(select(provider_usage.c.calls)) == 7
-        assert await conn.scalar(select(state.c.cursor).where(state.c.id == "test")) == revision
+    async with session_scope(database) as session:
+        assert await session.scalar(select(func.count()).select_from(AnalysisJob)) == 6002
+        assert await session.scalar(select(func.count()).select_from(AnalysisResult)) == 0
+        assert await session.scalar(select(ProviderUsage.calls)) == 7
+        assert (
+            await session.scalar(select(Workspace.cursor).where(Workspace.id == "test")) == revision
+        )
+
+
+async def test_batch_activity_query_count_is_constant_and_preserves_shared_progress(
+    database: AsyncEngine,
+) -> None:
+    await ingest(database, synthetic_inputs("batch-activity", 10))
+    while await process_one(database):
+        pass
+    async with session_scope(database) as session:
+        record_ids = list(await session.scalars(select(Feedback.id).order_by(Feedback.sequence)))
+
+    first_batch = await start_backfill(database, BackfillInput(record_ids=record_ids[:1]))
+    assert await process_one(database)
+
+    async def measured_items(batch_ids: list[str]) -> tuple[list[ActivityItem], int]:
+        statements: list[str] = []
+
+        def record_query(
+            _connection: object,
+            _cursor: object,
+            statement: str,
+            _parameters: object,
+            _context: object,
+            _executemany: bool,
+        ) -> None:
+            statements.append(statement)
+
+        event.listen(database.sync_engine, "before_cursor_execute", record_query)
+        try:
+            async with session_scope(database) as session:
+                items = await hydrate_activity(
+                    session, "test", ["batch:" + batch_id for batch_id in batch_ids]
+                )
+        finally:
+            event.remove(database.sync_engine, "before_cursor_execute", record_query)
+        return items, len(statements)
+
+    one_batch, one_count = await measured_items([first_batch])
+    assert len(one_batch) == 1
+    assert isinstance(one_batch[0], BatchActivity)
+    assert one_batch[0].batch.selected == one_batch[0].batch.completed == 1
+
+    batch_ids = [first_batch]
+    for record_id in record_ids[1:]:
+        batch_ids.append(
+            await start_backfill(database, BackfillInput(record_ids=[record_ids[0], record_id]))
+        )
+    batch_ids.reverse()
+    ten_batches, ten_count = await measured_items(batch_ids)
+
+    assert one_count == ten_count == 2
+    assert [item.id for item in ten_batches] == batch_ids
+    for item in ten_batches:
+        assert isinstance(item, BatchActivity)
+        assert item.batch.selected == (1 if item.id == first_batch else 2)
+        assert item.batch.completed == 1
+        assert item.batch.failed == 0

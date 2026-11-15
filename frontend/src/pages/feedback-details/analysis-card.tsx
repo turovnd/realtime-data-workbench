@@ -1,7 +1,7 @@
-import { CircleCheck, Quote } from "lucide-react";
+import { CircleCheck, Quote, Sparkles } from "lucide-react";
 
 import { isAiOutput } from "@/api";
-import type { useAnalysis } from "@/hooks";
+import type { AnalysisState } from "@/api/feedback";
 import { formatAnalysisError, topics } from "@/components/feedback";
 import {
   Alert,
@@ -13,12 +13,17 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
+  Empty,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
   Skeleton,
   Spinner,
 } from "@/components/ui";
 import { AnalysisProgress } from "./analysis-progress";
 
-type Props = { analysis: ReturnType<typeof useAnalysis> };
+type Props = { analysis: AnalysisState };
 
 export const AnalysisCard = ({ analysis }: Props) => {
   const { output, job, action, busy, completed, previous, preview } = analysis;
@@ -34,7 +39,7 @@ export const AnalysisCard = ({ analysis }: Props) => {
         <CardTitle>Analysis</CardTitle>
         <CardDescription>
           {ai
-            ? "A summary backed by the customer’s words."
+            ? "Check the summary and quotes against the original message."
             : "Run AI analysis to get a fresh summary of this message."}
         </CardDescription>
       </CardHeader>
@@ -146,9 +151,18 @@ export const AnalysisCard = ({ analysis }: Props) => {
             <Skeleton className="h-4 w-2/3" />
           </div>
         ) : (
-          <p className="text-sm text-muted-foreground">
-            No analysis is available yet.
-          </p>
+          <Empty>
+            <EmptyHeader>
+              <EmptyMedia variant="icon">
+                <Sparkles />
+              </EmptyMedia>
+              <EmptyTitle>No AI analysis yet</EmptyTitle>
+              <EmptyDescription>
+                Analyze this message to identify its main topic, intent and
+                supporting quotes.
+              </EmptyDescription>
+            </EmptyHeader>
+          </Empty>
         )}
       </CardContent>
     </Card>

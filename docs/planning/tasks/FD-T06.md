@@ -22,6 +22,7 @@ Run real AI analysis again for an existing record, or reprocess a bounded select
 - Progress is persisted; cancellation preserves completed results.
 - Activity includes automatic, single-record and grouped analyses; cards expand to exact historical results with cursor pagination, automatic status updates and visible recovery states.
 - Retry is bounded and stale leases cannot overwrite accepted output.
+- Feed, Activity and run details use one signed-cursor codec. Each operation separately validates workspace, filters, expiry and position against its stored view.
 
 ## Tests
 
@@ -29,6 +30,6 @@ Real PostgreSQL analysis admission/replay/concurrency and backfill/recovery test
 
 ## Evidence and status
 
-Implemented. Current real PostgreSQL tests cover analysis admission, idempotent replay, concurrency, fixed selection, cancellation and recovery. Controlled browser cases cover the interactive states; two real OpenRouter UI actions verified repeated analysis and retained results. The record page presents the latest result. Activity exposes the exact result from each listed run, including older jobs outside the record response’s recent-history window.
+Repeated analysis, historical Activity and the shared cursor codec/view lifecycle are implemented. PostgreSQL admission, concurrency, pagination and recovery checks passed, as did browser Activity and analysis journeys. Connected worker checks used the explicit deterministic provider; intercepted AI controls and earlier live-provider calls are recorded separately in the delivery ledger.
 
 See [delivery status](../../delivery-status.md) for actual verification and release scope.

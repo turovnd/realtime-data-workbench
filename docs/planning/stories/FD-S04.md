@@ -15,4 +15,4 @@ A reviewer can request a new version without losing the original or completed ou
 
 - [FD-T06: Reanalyze selected feedback and recover failures](../tasks/FD-T06.md)
 
-Acceptance requires the linked task outcomes and relevant user journey to pass. Owner review remains a separate checkpoint; planned stories are not implemented.
+Acceptance requires the linked task outcomes and relevant user journey to pass. Technical checks and the published runtime are recorded separately in the release ledger.

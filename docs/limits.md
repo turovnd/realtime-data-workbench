@@ -24,6 +24,6 @@ These are enforced demo bounds, not throughput measurements.
 
 Immutable inputs/results, fences, unique record/run effects and exact source checks protect stored behavior. The advisory-lock design deliberately serializes bounded mutations; no scalability benchmark is claimed.
 
-Not implemented: real customer ingestion, Kafka/Redis, SSE, organizations/roles, OAuth, email verification/reset, classification quality evaluation, general migration framework, production-grade observability or high availability. Browser fixtures and snapshots are local synthetic copies. They do not establish worker durability, live provider quality or server persistence. Idempotent storage does not guarantee exactly-once provider calls or charges.
+Not implemented: real customer ingestion, Kafka/Redis, SSE, organizations/roles, OAuth, email verification/reset, a representative independently reviewed AI-quality benchmark, production-grade observability or high availability. Browser fixtures and snapshots are local synthetic copies. They do not establish worker durability, live provider quality or server persistence. Idempotent storage does not guarantee exactly-once provider calls or charges.
 
 The authorized local AI configuration uses `unlimited` cumulative attempts, at most three attempts per job and 800 output tokens per attempt. Shipped defaults stay disabled with a budget of three; reservations persist across restarts and are not refunded after failed or uncertain calls. See [live setup](setup.md#live-analysis).

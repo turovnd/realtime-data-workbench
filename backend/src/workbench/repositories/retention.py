@@ -1,41 +1,43 @@
 from datetime import UTC, datetime, timedelta
 
 from sqlalchemy import delete, select, text
-from sqlalchemy.ext.asyncio import AsyncConnection
+from sqlalchemy.ext.asyncio import AsyncSession
 
-from workbench.infrastructure.tables import (
-    accounts,
-    auth_sessions,
-    batches,
-    feed_views,
-    jobs,
-    outputs,
-    records,
-    state,
+from workbench.models import (
+    Account,
+    AnalysisBatch,
+    AnalysisJob,
+    AnalysisResult,
+    AuthSession,
+    Feedback,
+    FeedView,
+    Workspace,
 )
 
 
-async def cleanup_expired(conn: AsyncConnection) -> int:
+async def cleanup_expired(session: AsyncSession) -> int:
     now = datetime.now(UTC)
-    await conn.execute(delete(feed_views).where(feed_views.c.expires_at <= now))
-    await conn.execute(delete(auth_sessions).where(auth_sessions.c.expires_at <= now))
+    await session.execute(delete(FeedView).where(FeedView.expires_at <= now))
+    await session.execute(delete(AuthSession).where(AuthSession.expires_at <= now))
     expired = list(
-        (
-            await conn.execute(
-                select(state.c.id)
-                .where(
-                    state.c.created_at < now - timedelta(hours=24),
-                    ~state.c.id.in_(select(accounts.c.workspace_id)),
-                )
-                .limit(20)
+        await session.scalars(
+            select(Workspace.id)
+            .where(
+                Workspace.created_at < now - timedelta(hours=24),
+                ~Workspace.id.in_(select(Account.workspace_id)),
             )
-        ).scalars()
+            .limit(20)
+        )
     )
     if not expired:
         return 0
-    await conn.execute(text("SET LOCAL workbench.maintenance = 'on'"))
-    for table in (auth_sessions, feed_views, outputs, jobs, batches, records):
-        await conn.execute(delete(table).where(table.c.workspace_id.in_(expired)))
-    await conn.execute(delete(state).where(state.c.id.in_(expired)))
-    await conn.execute(text("SET LOCAL workbench.maintenance = 'off'"))
+
+    await session.execute(text("SET LOCAL workbench.maintenance = 'on'"))
+
+    for model in (AuthSession, FeedView, AnalysisResult, AnalysisJob, AnalysisBatch, Feedback):
+        await session.execute(delete(model).where(model.workspace_id.in_(expired)))
+
+    await session.execute(delete(Workspace).where(Workspace.id.in_(expired)))
+    await session.execute(text("SET LOCAL workbench.maintenance = 'off'"))
+
     return len(expired)

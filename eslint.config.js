@@ -71,6 +71,13 @@ export default tseslint.config(
     rules: { "local/public-imports": "error" },
   },
   {
+    files: [
+      "frontend/src/router/routes-auth.tsx",
+      "frontend/src/router/routes-main.tsx",
+    ],
+    rules: { "react-refresh/only-export-components": "off" },
+  },
+  {
     files: ["frontend/src/components/ui/**/*.{ts,tsx}"],
     rules: {
       "react-refresh/only-export-components": "off",

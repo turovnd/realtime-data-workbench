@@ -1,42 +1,33 @@
-"""SQL primitives used inside the ingestion transaction."""
+"""Feedback persistence within the caller's ingestion transaction."""
 
 from datetime import UTC, datetime
 
-from sqlalchemy import func, insert, select
-from sqlalchemy.engine import RowMapping
-from sqlalchemy.ext.asyncio import AsyncConnection
+from sqlalchemy import func, select
+from sqlalchemy.ext.asyncio import AsyncSession
 
-from workbench.infrastructure.tables import records
+from workbench.models import Feedback
 from workbench.schemas.feedback import FeedbackInput
 
 
-async def record_counts(conn: AsyncConnection, workspace_id: str) -> tuple[int, int]:
-    own = await conn.scalar(
-        select(func.count()).select_from(records).where(records.c.workspace_id == workspace_id)
+async def record_counts(session: AsyncSession, workspace_id: str) -> tuple[int, int]:
+    own = await session.scalar(
+        select(func.count()).select_from(Feedback).where(Feedback.workspace_id == workspace_id)
     )
-    total = await conn.scalar(select(func.count()).select_from(records))
-    return int(own or 0), int(total or 0)
+    total = await session.scalar(select(func.count()).select_from(Feedback))
+    return own or 0, total or 0
 
 
-async def find_input(conn: AsyncConnection, workspace_id: str, identity: str) -> RowMapping | None:
-    return (
-        (
-            await conn.execute(
-                select(records).where(
-                    records.c.workspace_id == workspace_id, records.c.identity == identity
-                )
-            )
-        )
-        .mappings()
-        .first()
+async def find_input(session: AsyncSession, workspace_id: str, identity: str) -> Feedback | None:
+    return await session.scalar(
+        select(Feedback).where(Feedback.workspace_id == workspace_id, Feedback.identity == identity)
     )
 
 
 async def insert_input(
-    conn: AsyncConnection, workspace_id: str, record_id: str, sequence: int, value: FeedbackInput
+    session: AsyncSession, workspace_id: str, record_id: str, sequence: int, value: FeedbackInput
 ) -> None:
-    await conn.execute(
-        insert(records).values(
+    session.add(
+        Feedback(
             id=record_id,
             workspace_id=workspace_id,
             identity=value.identity,
@@ -46,3 +37,4 @@ async def insert_input(
             ingested_at=datetime.now(UTC),
         )
     )
+    await session.flush()

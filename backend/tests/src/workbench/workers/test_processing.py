@@ -1,20 +1,28 @@
 import json
 import logging
+from datetime import UTC, datetime
 
+import httpx
 import pytest
+from pydantic import SecretStr
+from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncEngine
 
+from workbench.infrastructure.database import session_scope
 from workbench.infrastructure.deterministic import generate_demo
 from workbench.logic.backfills import start_backfill
 from workbench.logic.enrichment import enrich
 from workbench.logic.ingestion import ingest
 from workbench.logic.synthetic import synthetic_inputs
+from workbench.models import AnalysisJob, ProviderUsage
 from workbench.repositories.inspection import snapshot
 from workbench.repositories.jobs import claim_job, retry_job
 from workbench.schemas.backfills import BackfillInput
 from workbench.schemas.common import Config
 from workbench.schemas.feedback import FeedbackInput
+from workbench.settings import Settings
 from workbench.workers.processing import process_one
+from workbench.workers.providers import build_generators
 
 pytestmark = pytest.mark.integration
 
@@ -135,3 +143,76 @@ async def test_multilingual_validation_failure_is_terminal_durable_and_preserves
     assert "PRIVATE_PROVIDER_MARKER" not in caplog.text
     assert "PRIVATE_FIELD_MARKER" not in caplog.text
     assert source not in caplog.text
+
+
+async def test_unconfigured_live_job_fails_without_falling_back_or_spending_budget(
+    database: AsyncEngine,
+) -> None:
+    settings = Settings(
+        provider_mode="openrouter", openrouter_calls_enabled=False, openrouter_api_key=None
+    )
+    await ingest(database, synthetic_inputs("seed", 1), provider=settings.provider_id)
+
+    def handler(_request: httpx.Request) -> httpx.Response:
+        pytest.fail("An unconfigured live provider must not call the network")
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+        assert await process_one(database, generators=build_generators(settings, client))
+    record = (await snapshot(database)).records[0]
+    assert record.outputs == []
+    assert record.jobs[0].status == "failed" and record.jobs[0].attempts == 1
+    assert record.jobs[0].error == "Selected provider is not configured"
+    async with session_scope(database) as session:
+        assert await session.scalar(select(ProviderUsage.calls)) is None
+
+
+async def test_provider_retries_are_three_durable_worker_attempts(
+    database: AsyncEngine,
+) -> None:
+    settings = Settings(
+        openrouter_calls_enabled=True,
+        openrouter_api_key=SecretStr("test-only-not-a-key"),
+        provider_mode="openrouter",
+    )
+    await ingest(database, synthetic_inputs("seed", 1), provider=settings.provider_id)
+    calls = 0
+
+    def handler(_request: httpx.Request) -> httpx.Response:
+        nonlocal calls
+        calls += 1
+        return httpx.Response(429, text="PRIVATE_UPSTREAM_MARKER")
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+        generators = build_generators(settings, client)
+        for attempt in range(1, 4):
+            assert await process_one(database, generators=generators, live_budget=3)
+            record = (await snapshot(database)).records[0]
+            assert calls == attempt == record.jobs[0].attempts
+            assert record.jobs[0].status == ("queued" if attempt < 3 else "failed")
+            assert record.outputs == []
+            assert record.jobs[0].error == "RetryableProviderError"
+            if attempt < 3:
+                async with session_scope(database) as session:
+                    await session.execute(
+                        update(AnalysisJob)
+                        .where(AnalysisJob.id == record.jobs[0].id)
+                        .values(available_at=datetime.now(UTC))
+                    )
+        assert not await process_one(database, generators=generators, live_budget=3)
+    async with session_scope(database) as session:
+        assert await session.scalar(select(ProviderUsage.calls)) == 3
+    assert calls == 3
+
+
+async def test_default_worker_never_substitutes_demo_output_for_a_live_job(
+    database: AsyncEngine,
+) -> None:
+    await ingest(database, synthetic_inputs("live-default", 1), provider="openrouter/test")
+    assert await process_one(database, live_budget=3)
+    record = (await snapshot(database)).records[0]
+    assert record.outputs == []
+    assert record.jobs[0].provider == "openrouter/test"
+    assert record.jobs[0].status == "failed"
+    assert record.jobs[0].error == "Selected provider is not configured"
+    async with session_scope(database) as session:
+        assert await session.get(ProviderUsage, "openrouter") is None

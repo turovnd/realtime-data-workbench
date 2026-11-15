@@ -2,9 +2,15 @@ import asyncio
 
 import pytest
 from httpx import ASGITransport, AsyncClient
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncEngine
 
 from workbench.api import create_app
+from workbench.infrastructure.database import session_scope
+from workbench.infrastructure.deterministic import generate_demo
+from workbench.models import AnalysisJob, ProviderUsage
+from workbench.schemas.common import Config
+from workbench.settings import Settings
 from workbench.workers.processing import process_one
 
 pytestmark = pytest.mark.integration
@@ -92,3 +98,52 @@ async def test_feedback_validation_and_concurrent_retry(database: AsyncEngine) -
         assert first.json()["id"] == second.json()["id"]
         feed = (await client.get("/api/feedback")).json()
         assert feed["total"] == 1 and len(feed["records"][0]["jobs"]) == 1
+
+
+async def test_live_workspace_keeps_seeded_examples_free_but_analyzes_new_feedback(
+    database: AsyncEngine,
+) -> None:
+    settings = Settings(provider_mode="openrouter", openrouter_calls_enabled=True)
+    async with AsyncClient(
+        transport=ASGITransport(app=create_app(database, settings)), base_url="http://test"
+    ) as client:
+        person = (await client.post("/api/auth/demo", json={})).json()
+        client.headers["Authorization"] = f"Bearer {person['token']}"
+        async with session_scope(database) as session:
+            jobs = list(await session.scalars(select(AnalysisJob)))
+            assert len(jobs) == 24
+            assert {job.provider for job in jobs} == {"deterministic-rules/1"}
+
+        for _ in range(24):
+            assert await process_one(database)
+        assert not await process_one(database)
+        async with session_scope(database) as session:
+            assert await session.scalar(select(func.count()).select_from(ProviderUsage)) == 0
+
+        payload = {
+            "identity": "reviewer-example",
+            "text": "The monthly export fails; weekly downloads still work.",
+            "channel": "Support",
+        }
+        created = await client.post("/api/feedback", json=payload)
+        assert created.status_code == 201
+        record = created.json()
+        assert len(record["jobs"]) == 1
+        assert record["jobs"][0]["provider"] == settings.provider_id
+        assert record["jobs"][0]["status"] == "queued"
+        assert (await client.post("/api/feedback", json=payload)).status_code == 200
+
+        calls: list[str] = []
+
+        async def provider(source: str, config: Config) -> str:
+            calls.append(source)
+            return await generate_demo(source, config)
+
+        assert await process_one(
+            database, generators={settings.provider_id: provider}, live_budget=1
+        )
+        completed = (await client.get(f"/api/feedback/{record['id']}")).json()
+        assert calls == [payload["text"]]
+        assert completed["jobs"][0]["status"] == "succeeded"
+        assert completed["outputs"][0]["provider"] == settings.provider_id
+        assert len(completed["outputs"]) == 1

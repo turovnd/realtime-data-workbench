@@ -1,24 +1,6 @@
 /* Cache public application files only. API responses and mutations are never cached. */
-const CACHE = "feedback-desk-shell-v4";
-
-const shellAssets = html => {
-  const urls = new Set();
-
-  for (const [tag] of html.matchAll(/<(?:script|link)\b[^>]*>/gi)) {
-    const source = tag.match(/\b(?:src|href)\s*=\s*(["'])(.*?)\1/i)?.[2];
-    if (!source) continue;
-
-    const url = new URL(source, self.location.origin);
-    if (
-      url.origin === self.location.origin &&
-      url.pathname.startsWith("/assets/")
-    ) {
-      urls.add(url.href);
-    }
-  }
-
-  return [...urls];
-};
+const CACHE = "feedback-desk-shell-__BUILD_HASH__";
+const ASSETS = ["__BUILD_ASSETS__"];
 
 self.addEventListener("install", event => {
   event.waitUntil(
@@ -34,14 +16,13 @@ self.addEventListener("install", event => {
         throw new Error("The public application shell could not be loaded.");
       }
 
-      const assets = shellAssets(await response.clone().text());
-      if (!assets.length) {
+      if (!ASSETS.length) {
         throw new Error("The public application shell has no static assets.");
       }
 
       const cache = await caches.open(CACHE);
       await cache.addAll(
-        assets.map(
+        ASSETS.map(
           url => new Request(url, { cache: "reload", credentials: "omit" })
         )
       );

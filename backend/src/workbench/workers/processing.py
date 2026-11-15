@@ -16,7 +16,7 @@ logger = logging.getLogger("workbench.worker")
 async def process_one(
     engine: AsyncEngine,
     *,
-    generate: Generate = generate_demo,
+    generate: Generate | None = None,
     lease_seconds: int = 30,
     timeout_seconds: float = 10,
     generators: Mapping[str, Generate] | None = None,
@@ -26,7 +26,9 @@ async def process_one(
     if claim is None:
         return False
     try:
-        selected = generate if generators is None else generators.get(claim.provider)
+        selected = generators.get(claim.provider) if generators is not None else generate
+        if selected is None and generators is None and claim.provider == "deterministic-rules/1":
+            selected = generate_demo
         if selected is None:
             raise TerminalProviderError("Selected provider is not configured")
         if claim.provider.startswith("openrouter/") and not await reserve_live_call(

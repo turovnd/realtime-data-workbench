@@ -15,7 +15,7 @@ The current two portfolio stacks retain separate PostgreSQL instances. Consolida
 
 ## Frontend build and Git delivery
 
-The previously verified Vercel deployment used root directory `web`, `pnpm build` and output `dist`. Current local source uses `frontend/`; update the hosted root directory to `frontend` only in the reviewed publishing step. No remote setting changed during this checkpoint. Production previously used `ENABLE_EXPERIMENTAL_COREPACK=1`, honoring pinned pnpm 11.20.0.
+Configure the Vercel project with root directory `frontend`, build command `pnpm build` and output `dist`. Production uses Node 24 and `ENABLE_EXPERIMENTAL_COREPACK=1` to honor pinned pnpm 11.20.0. The root workspace and lockfile must be included in the build context.
 
 Set `VITE_API_URL=https://realtime-api.b2p.space` at frontend build time, with no `/api` suffix. It is a public origin, never a credential. Missing this variable selects the labelled browser fixture; `same-origin` is reserved for the optional local Docker web proxy.
 
@@ -33,6 +33,18 @@ For each release: verify image architecture/digest and compatibility; retain the
 
 The HTTPS proxy enforces 16 KiB request bodies. Feedback refresh uses polling, so no SSE proxy configuration is required. API auth/rate limits remain enforced behind the proxy. Scoped certificate renewal and proxy validation belong to the deployment operator; repository source alone does not establish renewal success.
 
+### First Alembic adoption
+
+Before updating an existing unversioned installation, inspect its current schema and take a recoverable backup. Rehearse adoption on an isolated restore and compare records, analysis jobs/results, accounts, sessions and the provider usage counter. Pause only this project's API and worker writers. Using the new reviewed backend image and existing private database connection, run the migration service with the explicit adoption option:
+
+```sh
+docker compose run --rm migrate /app/.venv/bin/python -m workbench.db --adopt
+```
+
+Then verify the stored revision and schema, and start the reviewed API/worker image. Subsequent deployments use the normal migration command. Adoption rejects unknown shapes; do not bypass it with `stamp head`. Known index normalization can acquire table locks. The migration keeps immutable-history triggers and existing data; downgrades reject deletion of populated data or incompatible repeated-run history.
+
+The current refactor has not performed this adoption on the active local or hosted database. Test-database checks do not establish that a deployment has happened.
+
 ## Health, smoke and rollback
 
 `GET /health` checks API/database readiness, not worker progress. Create a disposable demo and verify 12+12 cursor paging, worker v1 completion, selected v2 backfill, unchanged source/v1 history and logout revocation. Confirm another workspace cannot use its cursor or mutate its objects. Keep smoke bounded and deterministic.
@@ -46,3 +58,7 @@ Rollback to the preceding compatible API/worker image within this project. A sch
 A persistent Docker volume is not a backup. Arrange encrypted off-host exports, a retention policy and a restoration test into a new isolated database. Verify roles, schema, row counts and a full synthetic workflow before relying on the backup. No successful off-host restore is currently claimed. PostgreSQL's [SQL dump documentation](https://www.postgresql.org/docs/current/backup-dump.html) explains per-database dumps and separately handled cluster roles.
 
 One host remains a shared failure domain. No high availability or measured throughput guarantee is claimed.
+
+## Schema-aware rollback
+
+Keep the prior image and a database backup before adopting an unversioned database. Verify that backup through an isolated restore and migration rehearsal. An old application image is not automatically compatible with the newer repeat-run schema: after new analysis runs have been accepted, prefer a forward fix. Restoring an old backup would discard later writes and requires an explicit data-recovery decision. Never downgrade or restore the active database just to make an old image start.
