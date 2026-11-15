@@ -5,7 +5,7 @@ flowchart LR
   UI[React frontend] -->|HTTPS requests and polling| API[FastAPI]
   API --> DB[(PostgreSQL)]
   Worker[Python worker] -->|leased jobs and fenced results| DB
-  Worker -->|bounded request| Provider[OpenRouter]
+  Worker -->|bounded request| Provider[Selected AI provider]
   Migration[Alembic command] -->|explicit schema migration| DB
 ```
 
@@ -61,9 +61,11 @@ The feed freezes membership and filters; processing status can still refresh. Ac
 
 ## AI analysis
 
-`logic/prompts.py` builds the analysis instructions and schema from shared domain constraints. `FeedbackGenerator` prepares the request through the small model-client contract. `OpenRouterClient` owns HTTP, bounded response reading, provider-envelope validation and safe transport errors. `workers/providers.py` composes the configured model with the worker. `logic/enrichment.py` checks the domain schema and exact source quotes before anything can be saved.
+`logic/prompts.py` builds the analysis instructions and schema from shared domain constraints. `FeedbackGenerator` prepares the request through the small model-client contract. The explicit OpenRouter and DeepSeek adapters construct their provider-specific requests and share bounded HTTP transport and response-envelope validation. `workers/providers.py` composes only the selected live model with the worker. `logic/enrichment.py` checks the domain schema and exact source quotes before anything can be saved.
 
-Retries belong to the durable worker. The transport performs one request per admitted attempt; missing live configuration fails explicitly. A live provider never falls back to deterministic generation. Model, deadline, output-token limit and cumulative call policy come from settings. Logs include safe timing and usage metadata, not source text, provider bodies or credentials.
+OpenRouter requests strict JSON Schema. DeepSeek Chat Completions uses JSON-object mode with thinking disabled and includes the schema in the system instructions; application validation remains authoritative. The adapters do not share provider-specific routing or retention flags. Switching providers changes new jobs, never historical results or an existing job's provider identity. A queued job for an unconfigured provider fails explicitly.
+
+Retries belong to the durable worker. The transport performs one request per admitted attempt; missing live configuration fails explicitly. A live provider never falls back to deterministic generation. Model, deadline, output-token limit and cumulative call policy come from settings. A shared transactional admission lock checks total usage across providers, then increments the selected provider's durable counter. Existing OpenRouter reservations are retained when DeepSeek is selected. Logs include safe timing and usage metadata, not source text, provider bodies or credentials.
 
 ## Schema and deployment
 

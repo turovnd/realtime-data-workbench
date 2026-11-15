@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { isAiProvider } from "./providers";
+
 export const feedbackInputSchema = z
   .object({
     identity: z
@@ -164,7 +166,7 @@ export const currentJob = (record: FeedbackRecord) => record.jobs.at(-1);
 export const currentOutput = (record: FeedbackRecord) => record.outputs.at(-1);
 
 export const isAiOutput = (output: Output | undefined) =>
-  !!output?.provider.startsWith("openrouter/");
+  isAiProvider(output?.provider);
 
 export const filterRecords = (
   records: FeedbackRecord[],

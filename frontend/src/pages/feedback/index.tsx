@@ -1,7 +1,13 @@
 import { useRef, useState } from "react";
 import { Plus, RefreshCw, Sparkles, WifiOff, X } from "lucide-react";
 
-import { currentJob, filterRecords, getSession } from "@/api";
+import {
+  currentJob,
+  filterRecords,
+  getSession,
+  isAiProvider,
+  isSampleProvider,
+} from "@/api";
 import { useAnalyzeSelection } from "@/api/feedback";
 import {
   Feed,
@@ -35,10 +41,11 @@ export const FeedbackPage = () => {
   const addButton = useRef<HTMLButtonElement>(null);
   const dialogTrigger = useRef<HTMLButtonElement | null>(null);
   const demo = getSession()?.kind !== "account";
-  const liveAnalysis =
-    state.status.data?.provider.startsWith("openrouter/") ?? false;
+  const liveAnalysis = isAiProvider(state.status.data?.provider);
   const availabilityKnown =
-    state.mode === "browser-demo" || !!state.status.data;
+    state.mode === "browser-demo" ||
+    liveAnalysis ||
+    isSampleProvider(state.status.data?.provider);
 
   const openBlank = () => {
     if (!state.online || !availabilityKnown) return;
@@ -113,7 +120,7 @@ export const FeedbackPage = () => {
           </AlertDescription>
         </Alert>
       )}
-      {state.status.error && !availabilityKnown && (
+      {(state.status.error || state.status.data) && !availabilityKnown && (
         <Alert variant="destructive">
           <AlertTitle>Analysis status unavailable</AlertTitle>
           <AlertDescription>

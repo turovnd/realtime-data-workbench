@@ -41,7 +41,7 @@ Record actual results for this source revision in [delivery status](delivery-sta
 
 ## Live-provider smoke
 
-Keep automated regression tests on isolated deterministic or mocked providers. A separately authorized live smoke may submit two or three bounded synthetic messages through the API, wait for their real worker results and verify OpenRouter provenance and exact evidence against the source. Record the persisted call counter before and after; retries also increment the counter and consume any configured finite ceiling. Do not enable a live worker against an uninspected backlog or reset the usage counter to make a test pass.
+Keep automated regression tests on isolated deterministic or mocked providers. A separately authorized live smoke may submit two or three bounded synthetic messages through the API, wait for their real worker results and verify the selected provider/model and exact evidence against the source. Record persisted call counters before and after; retries also increment the selected provider's counter and consume the shared finite ceiling when configured. Do not enable a live worker against an uninspected backlog or reset usage counters to make a test pass.
 
 HTTP 402, 401, 429, server errors, invalid output and disabled configuration are tested without paid calls. An accepted analysis request does not count as successful model output; live evidence must include the completed persisted result.
 
@@ -52,9 +52,9 @@ HTTP 402, 401, 429, server errors, invalid output and disabled configuration are
 From the repository root, with the ignored server-side environment configured:
 
 ```sh
-uv run --project backend python backend/tools/evaluate_ai.py --live --output backend/evaluation/latest.json
+uv run --project backend python backend/tools/evaluate_ai.py --live --output .local/ai-evaluation.json
 ```
 
-This command makes one real OpenRouter request per case, up to six cases, with no retries and at most 800 output tokens per request. It uses the production prompt, transport and output validator directly. It does not test the worker or database, and it does not increment the application’s durable usage counter. Keep it outside normal CI.
+This command makes one real request per case to the selected, explicitly enabled provider, up to six cases, with no retries and at most 800 output tokens per request. It uses the production prompt, transport and output validator directly. It does not test the worker or database, and it does not increment the application's durable usage counters. Keep it outside normal CI. Use a distinct output filename when evaluating another provider so the earlier evidence remains attributable to its original model.
 
 The report records the case and instruction hashes, model, request count, latency, tokens when available, structured outputs and automatic checks. Exact quotes and allowed labels are machine-checked. Summary usefulness, unsupported claims and treatment of uncertainty require a separate qualitative review. Record who performed that review; an AI-assisted review is not independent human validation. Four passing examples are not an accuracy benchmark or evidence of time saved for customers. The full browser-to-worker smoke is a separate check.

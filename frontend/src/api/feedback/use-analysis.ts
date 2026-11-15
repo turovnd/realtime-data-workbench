@@ -6,6 +6,7 @@ import { useOnline } from "@/hooks";
 import { getSession } from "../auth";
 import { adapter } from "../client";
 import { currentJob, currentOutput, isAiOutput } from "../contracts";
+import { isSampleProvider } from "../providers";
 import { createSavedFeedbackStorage } from "../saved-feedback";
 
 export const useAnalysis = (id: string) => {
@@ -74,7 +75,7 @@ export const useAnalysis = (id: string) => {
   const running = job?.status === "queued" || job?.status === "leased";
   const busy = action.isPending || running;
   const samplePending =
-    !action.isPending && running && !job?.provider?.startsWith("openrouter/");
+    !action.isPending && running && isSampleProvider(job?.provider);
 
   const completed =
     job?.status === "succeeded" &&

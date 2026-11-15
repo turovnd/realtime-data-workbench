@@ -16,7 +16,7 @@ Feedback Desk turns a message into a short AI summary, a topic, an intent and su
 4. Compare the AI summary with the original and its supporting quotes. Check that the failed monthly export, working smaller exports and customer impact have not been confused.
 5. Run **Analyze again**, then open **Activity** to inspect the saved runs and their results.
 
-Opening the demo does not call a model: seeded results are labelled as samples. Submitting a message to the live-configured API or explicitly analyzing an existing one invokes OpenRouter. The result identifies its model. Provider failures remain visible; a failed live request never becomes a sample response.
+Opening the demo does not call a model: seeded results are labelled as samples. Submitting a message to the live-configured API or explicitly analyzing an existing one invokes the selected AI provider. The result identifies its model. Provider failures remain visible; a failed live request never becomes a sample response.
 
 ## What the MVP does
 
@@ -50,7 +50,7 @@ cp -n .env.example .env
 docker compose --profile local-web up --build -d --wait
 ```
 
-Open `http://127.0.0.1:8082`. Fresh installs start with live model calls disabled. To use real AI, configure the server-side OpenRouter key and explicit enablement described in [setup](docs/setup.md#live-analysis). Existing databases without Alembic require the documented [adoption procedure](docs/setup.md#existing-unversioned-database); never delete a volume to make an upgrade succeed.
+Open `http://127.0.0.1:8082`. Fresh installs start with live model calls disabled. To use real AI, configure the selected provider's server-side key and explicit enablement described in [setup](docs/setup.md#live-analysis). Existing databases without Alembic require the documented [adoption procedure](docs/setup.md#existing-unversioned-database); never delete a volume to make an upgrade succeed.
 
 For frontend-only work, `pnpm install --frozen-lockfile` followed by `pnpm dev` starts the labelled browser preview. It does not simulate a successful live AI request.
 

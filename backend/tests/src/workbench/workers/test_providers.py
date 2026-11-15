@@ -4,16 +4,18 @@ import httpx
 import pytest
 from pydantic import SecretStr
 
-from workbench.logic.enrichment import enrich
+from workbench.logic.enrichment import FeedbackGenerator, enrich
 from workbench.logic.errors import RetryableProviderError, TerminalProviderError
 from workbench.schemas.common import Config
 from workbench.settings import Settings
-from workbench.workers.providers import build_generators, openrouter_generator
+from workbench.workers.providers import build_generators, build_model_client, openrouter_generator
 
 
 def live_settings() -> Settings:
     return Settings(
-        openrouter_calls_enabled=True, openrouter_api_key=SecretStr("test-only-not-a-key")
+        provider_mode="openrouter",
+        openrouter_calls_enabled=True,
+        openrouter_api_key=SecretStr("test-only-not-a-key"),
     )
 
 
@@ -196,6 +198,7 @@ async def test_worker_composition_preserves_explicit_model_timeout_and_token_lim
     settings = Settings(
         openrouter_calls_enabled=True,
         openrouter_api_key=SecretStr("test-only-not-a-key"),
+        provider_mode="openrouter",
         openrouter_model="configured/model",
         openrouter_max_tokens=456,
         provider_timeout_seconds=4.5,
@@ -218,3 +221,66 @@ async def test_worker_composition_preserves_explicit_model_timeout_and_token_lim
         generators = build_generators(settings, client)
         assert set(generators) == {"deterministic-rules/1", "openrouter/configured/model"}
         assert await generators["openrouter/configured/model"]("source", "v2") == "{}"
+
+
+@pytest.mark.parametrize("mode", ["openrouter", "deepseek"])
+async def test_composition_registers_only_selected_provider_even_with_both_keys(mode: str) -> None:
+    settings = Settings.model_validate(
+        {
+            "provider_mode": mode,
+            "openrouter_calls_enabled": True,
+            "openrouter_api_key": "old-provider-key",
+            "deepseek_calls_enabled": True,
+            "deepseek_api_key": "selected-provider-key",
+        }
+    )
+    async with httpx.AsyncClient() as client:
+        assert set(build_generators(settings, client)) == {
+            "deterministic-rules/1",
+            settings.provider_id,
+        }
+
+
+@pytest.mark.parametrize("enabled,key", [(False, None), (False, "key"), (True, None), (True, "")])
+async def test_deepseek_never_uses_an_openrouter_key_or_synthetic_fallback(
+    enabled: bool,
+    key: str | None,
+) -> None:
+    settings = Settings(
+        provider_mode="deepseek",
+        deepseek_calls_enabled=enabled,
+        deepseek_api_key=SecretStr(key) if key is not None else None,
+        openrouter_calls_enabled=True,
+        openrouter_api_key=SecretStr("old-provider-key"),
+    )
+
+    def handler(_: httpx.Request) -> httpx.Response:
+        pytest.fail("Disabled selected provider must not call any upstream")
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+        assert set(build_generators(settings, client)) == {"deterministic-rules/1"}
+        with pytest.raises(TerminalProviderError, match="disabled or not configured"):
+            build_model_client(settings, client)
+
+
+async def test_deepseek_composition_honors_timeout_and_evaluation_token_cap() -> None:
+    settings = Settings(
+        provider_mode="deepseek",
+        deepseek_calls_enabled=True,
+        deepseek_api_key=SecretStr("selected-key"),
+        deepseek_model="deepseek-v4-pro",
+        deepseek_max_tokens=1000,
+        provider_timeout_seconds=3.5,
+    )
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        body = json.loads(request.content)
+        assert body["model"] == "deepseek-v4-pro"
+        assert body["max_tokens"] == 800
+        assert request.extensions["timeout"]["read"] == 3.5
+        assert request.headers["Authorization"] == "Bearer selected-key"
+        return httpx.Response(200, json=completion("{}"))
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+        model = build_model_client(settings, client, max_tokens=800)
+        assert await FeedbackGenerator(model)("source", "v1") == "{}"

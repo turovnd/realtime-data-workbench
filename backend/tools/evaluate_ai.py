@@ -11,8 +11,8 @@ from time import monotonic
 import httpx
 from pydantic import Field, TypeAdapter
 
-from workbench.infrastructure.openrouter import OpenRouterClient
-from workbench.logic.enrichment import enrich
+from workbench.infrastructure.deepseek import system_instructions
+from workbench.logic.enrichment import ModelClient, enrich
 from workbench.logic.errors import RetryableProviderError, TerminalProviderError
 from workbench.logic.prompts import feedback_request
 from workbench.schemas.common import Config, StrictModel, Topic
@@ -20,6 +20,7 @@ from workbench.schemas.enrichment import Enrichment
 from workbench.schemas.feedback import MAX_FEEDBACK_LENGTH
 from workbench.schemas.providers import GenerationResult
 from workbench.settings import Settings
+from workbench.workers.providers import build_model_client
 
 MAX_CASES = 6
 MAX_TOKENS = 800
@@ -54,7 +55,7 @@ class CaseResult(StrictModel):
 class EvaluationReport(StrictModel):
     started_at: str
     model: str
-    provider: str = "openrouter"
+    provider: str
     cases_sha256: str
     max_output_tokens: int
     request_count: int = 0
@@ -78,14 +79,15 @@ def load_cases(path: Path) -> list[EvaluationCase]:
     return cases
 
 
-async def evaluate_case(client: OpenRouterClient, case: EvaluationCase) -> CaseResult:
+async def evaluate_case(client: ModelClient, case: EvaluationCase, provider: str) -> CaseResult:
     started = monotonic()
     request = feedback_request(case.text, case.config)
+    instructions = system_instructions(request) if provider == "deepseek" else request.instructions
     result = CaseResult(
         id=case.id,
         config=case.config,
-        instructions_sha256=hashlib.sha256(request.instructions.encode()).hexdigest(),
-        instructions=request.instructions,
+        instructions_sha256=hashlib.sha256(instructions.encode()).hexdigest(),
+        instructions=instructions,
         elapsed_ms=0,
         review_criteria=case.review_criteria,
     )
@@ -121,27 +123,22 @@ async def evaluate_case(client: OpenRouterClient, case: EvaluationCase) -> CaseR
 
 async def evaluate(settings: Settings, cases_path: Path, output_path: Path) -> bool:
     cases = await asyncio.to_thread(load_cases, cases_path)
-    if not settings.openrouter_calls_enabled or not settings.openrouter_api_key:
-        raise ValueError("Enable the server-side OpenRouter configuration before a live evaluation")
+    if not settings.live_calls_enabled or not settings.live_api_key or settings.live_model is None:
+        raise ValueError("Enable the selected server-side provider before a live evaluation")
     report = EvaluationReport(
         started_at=datetime.now(UTC).isoformat(),
-        model=settings.openrouter_model,
+        model=settings.live_model,
+        provider=settings.provider_mode,
         cases_sha256=hashlib.sha256(await asyncio.to_thread(cases_path.read_bytes)).hexdigest(),
-        max_output_tokens=min(settings.openrouter_max_tokens, MAX_TOKENS),
+        max_output_tokens=min(settings.live_max_tokens, MAX_TOKENS),
     )
     await asyncio.to_thread(output_path.parent.mkdir, parents=True, exist_ok=True)
 
     async with httpx.AsyncClient() as transport:
-        client = OpenRouterClient(
-            transport,
-            api_key=settings.openrouter_api_key,
-            model=settings.openrouter_model,
-            timeout_seconds=settings.provider_timeout_seconds,
-            max_tokens=report.max_output_tokens,
-        )
+        client = build_model_client(settings, transport, max_tokens=report.max_output_tokens)
         for case in cases:
             report.request_count += 1
-            result = await evaluate_case(client, case)
+            result = await evaluate_case(client, case, settings.provider_mode)
             report.results.append(result)
             await asyncio.to_thread(output_path.write_text, report.model_dump_json(indent=2) + "\n")
             outcome = "passed" if all(result.checks.values()) else "failed"
@@ -157,7 +154,9 @@ def main() -> int:
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()
     if not args.live:
-        parser.error("Pass --live explicitly; this command sends synthetic inputs to OpenRouter")
+        parser.error(
+            "Pass --live explicitly; this command sends synthetic inputs to the selected provider"
+        )
     settings = Settings()
     try:
         passed = asyncio.run(evaluate(settings, args.cases, args.output))

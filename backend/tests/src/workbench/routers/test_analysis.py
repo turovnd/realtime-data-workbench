@@ -20,10 +20,18 @@ from workbench.workers.processing import process_one
 pytestmark = pytest.mark.integration
 
 
+@pytest.mark.parametrize("provider_mode", ["openrouter", "deepseek"])
 async def test_real_analysis_repeats_without_overwriting_history_or_batch_progress(
     database: AsyncEngine,
+    provider_mode: str,
 ) -> None:
-    settings = Settings(provider_mode="openrouter", openrouter_calls_enabled=True)
+    settings = Settings.model_validate(
+        {
+            "provider_mode": provider_mode,
+            "openrouter_calls_enabled": True,
+            "deepseek_calls_enabled": True,
+        }
+    )
     app = create_app(database, settings)
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         person = (
@@ -134,13 +142,18 @@ async def test_real_analysis_repeats_without_overwriting_history_or_batch_progre
         assert persisted.outputs[-1].run == 4
 
 
-@pytest.mark.parametrize("mode,enabled", [("deterministic", True), ("openrouter", False)])
+@pytest.mark.parametrize(
+    "mode,enabled", [("deterministic", True), ("openrouter", False), ("deepseek", False)]
+)
 async def test_analysis_refuses_unconfigured_or_disabled_real_provider(
     database: AsyncEngine, mode: str, enabled: bool
 ) -> None:
-    settings = Settings(
-        provider_mode="openrouter" if mode == "openrouter" else "deterministic",
-        openrouter_calls_enabled=enabled,
+    settings = Settings.model_validate(
+        {
+            "provider_mode": mode,
+            "openrouter_calls_enabled": enabled,
+            "deepseek_calls_enabled": enabled,
+        }
     )
     async with AsyncClient(
         transport=ASGITransport(app=create_app(database, settings)), base_url="http://test"

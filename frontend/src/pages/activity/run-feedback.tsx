@@ -2,7 +2,7 @@ import { ArrowUpRight } from "lucide-react";
 import { Link } from "react-router-dom";
 
 import { feedbackPath } from "@/router/paths";
-import { isAiOutput, type BatchItem } from "@/api";
+import { formatProvider, isSampleProvider, type BatchItem } from "@/api";
 import {
   formatAnalysisError,
   statusLabels,
@@ -20,7 +20,7 @@ type Props = { item: BatchItem };
 
 export const RunFeedback = ({ item }: Props) => {
   const { job, output } = item;
-  const ai = isAiOutput(output ?? undefined);
+  const sample = isSampleProvider(output?.provider);
 
   return (
     <article
@@ -34,7 +34,7 @@ export const RunFeedback = ({ item }: Props) => {
             variant={job?.status === "failed" ? "destructive" : "secondary"}
           >
             {job
-              ? job.status === "succeeded" && !ai
+              ? job.status === "succeeded" && sample
                 ? "Sample analysis"
                 : statusLabels[job.status]
               : "Not started"}
@@ -71,9 +71,7 @@ export const RunFeedback = ({ item }: Props) => {
               <div className="flex flex-wrap items-center gap-2">
                 <Badge variant="outline">{topics[output.topic]}</Badge>
                 <span className="text-xs text-muted-foreground">
-                  {ai
-                    ? `AI · ${output.provider.replace("openrouter/", "")}`
-                    : "Sample analysis"}
+                  {formatProvider(output.provider)}
                 </span>
               </div>
               <p className="text-xs text-muted-foreground">

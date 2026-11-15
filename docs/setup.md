@@ -72,39 +72,47 @@ Review generated revisions before applying them. Data changes, PostgreSQL functi
 
 ## Environment
 
-| Setting                              | Meaning                                                        |
-| ------------------------------------ | -------------------------------------------------------------- |
-| `POSTGRES_PASSWORD`                  | Compose database credential; replace the example.              |
-| `WORKBENCH_DATABASE_URL`             | Native async PostgreSQL connection URL.                        |
-| `WORKBENCH_IMAGE`                    | Versioned backend deployment image.                            |
-| `WORKBENCH_ALLOWED_ORIGINS`          | JSON array of exact browser origins.                           |
-| `FORWARDED_ALLOW_IPS`                | Uvicorn's verified proxy peer; never `*`.                      |
-| `VITE_API_URL`                       | Public API origin: `https://realtime-api.b2p.space` on Vercel. |
-| `WORKBENCH_PROVIDER_MODE`            | `deterministic` by default; explicit `openrouter` opt-in.      |
-| `WORKBENCH_OPENROUTER_CALLS_ENABLED` | Separate live-call switch, default false.                      |
-| `WORKBENCH_OPENROUTER_API_KEY`       | Worker-only secret.                                            |
-| `WORKBENCH_OPENROUTER_MODEL`         | Baseline default `openai/gpt-4.1-mini`.                        |
-| `WORKBENCH_OPENROUTER_MAX_TOKENS`    | Default 800; bounded to 100–1,200.                             |
-| `WORKBENCH_LIVE_CALL_BUDGET`         | Persisted attempt ceiling: default 3; 0–100, or `unlimited`.   |
+| Setting                              | Meaning                                                                 |
+| ------------------------------------ | ----------------------------------------------------------------------- |
+| `POSTGRES_PASSWORD`                  | Compose database credential; replace the example.                       |
+| `WORKBENCH_DATABASE_URL`             | Native async PostgreSQL connection URL.                                 |
+| `WORKBENCH_IMAGE`                    | Versioned backend deployment image.                                     |
+| `WORKBENCH_ALLOWED_ORIGINS`          | JSON array of exact browser origins.                                    |
+| `FORWARDED_ALLOW_IPS`                | Uvicorn's verified proxy peer; never `*`.                               |
+| `VITE_API_URL`                       | Public API origin: `https://realtime-api.b2p.space` on Vercel.          |
+| `WORKBENCH_PROVIDER_MODE`            | `deterministic` by default; explicit `openrouter` or `deepseek` opt-in. |
+| `WORKBENCH_OPENROUTER_CALLS_ENABLED` | Separate live-call switch, default false.                               |
+| `WORKBENCH_OPENROUTER_API_KEY`       | Worker-only secret.                                                     |
+| `WORKBENCH_OPENROUTER_MODEL`         | Baseline default `openai/gpt-4.1-mini`.                                 |
+| `WORKBENCH_OPENROUTER_MAX_TOKENS`    | Default 800; bounded to 100–1,200.                                      |
+| `WORKBENCH_DEEPSEEK_CALLS_ENABLED`   | Separate DeepSeek live-call switch, default false.                      |
+| `WORKBENCH_DEEPSEEK_API_KEY`         | Worker-only DeepSeek secret.                                            |
+| `WORKBENCH_DEEPSEEK_MODEL`           | Default `deepseek-flash`.                                               |
+| `WORKBENCH_DEEPSEEK_MAX_TOKENS`      | Default 800; bounded to 100–1,200.                                      |
+| `WORKBENCH_LIVE_CALL_BUDGET`         | Persisted attempt ceiling: default 3; 0–100, or `unlimited`.            |
 
 Live processing requires explicit enablement and either available durable budget or the explicit `unlimited` setting. Demo initialization deliberately uses deterministic jobs. Changing the default provider does not overwrite a record's existing immutable configuration result. No model secret belongs in a `VITE_*` value. See [workflows](workflows.md) and [limits](limits.md).
 
 ## Live analysis
 
-The demonstration uses `openai/gpt-4.1-mini` through OpenRouter. Check the provider’s [model information and current pricing](https://openrouter.ai/openai/gpt-4.1-mini) before changing the model or enabling a new environment. The adapter requests a strict schema and verifies every evidence quote against the source; an error never falls back to a fixture.
+The worker supports direct DeepSeek and OpenRouter through separate adapters. Select one provider for new work. Provider availability depends on the deployment network and account: an HTTP 401 from a public probe proves that the API is reachable, not that generation works. The [release ledger](delivery-status.md) records the actual deployed provider and its verification.
 
-The authorized local settings are:
+For direct DeepSeek, obtain an API key from the [official console](https://platform.deepseek.com/api_keys) and keep it in the ignored `.env` as `WORKBENCH_DEEPSEEK_API_KEY`. Configure:
 
 ```dotenv
-WORKBENCH_PROVIDER_MODE=openrouter
-WORKBENCH_OPENROUTER_CALLS_ENABLED=true
-WORKBENCH_OPENROUTER_MODEL=openai/gpt-4.1-mini
-WORKBENCH_OPENROUTER_MAX_TOKENS=800
+WORKBENCH_PROVIDER_MODE=deepseek
+WORKBENCH_DEEPSEEK_CALLS_ENABLED=true
+WORKBENCH_DEEPSEEK_MODEL=deepseek-flash
+WORKBENCH_DEEPSEEK_MAX_TOKENS=800
 WORKBENCH_LIVE_CALL_BUDGET=unlimited
 ```
 
-Keep `WORKBENCH_OPENROUTER_API_KEY` in the ignored local `.env`; never put it in frontend variables. Compose passes the enablement flag to API and worker, but the key only to the worker. The shipped example stays disabled for ordinary setup and automated tests. Changing environment values requires recreating the API/worker containers. Inspect queued jobs before enabling a worker; do not bulk-resubmit demo data.
+The adapter uses [DeepSeek Chat Completions](https://api-docs.deepseek.com/) with thinking disabled, a bounded output and [JSON-object mode](https://api-docs.deepseek.com/guides/json_mode/). It includes the domain schema in the system instructions. JSON-object mode does not enforce that schema at the provider; the application validates every field and every exact source quote before saving a result. Empty, truncated or invalid answers fail explicitly. No model response is replaced with a fixture.
 
-The owner-authorized local configuration has no cumulative call ceiling and no lifetime analysis limit per record. `unlimited` removes only the cumulative ceiling: the durable counter still records every admitted attempt and survives restarts. A finite value remains a total ceiling for the database; zero admits no calls. Failed or timed-out attempts still count. Each job permits at most three attempts; input is capped at 4,000 characters and output at 800 tokens locally. These are attempt/token bounds, not an exact dollar limit or an exactly-once billing guarantee. Provider failures remain visible.
+OpenRouter remains available with `WORKBENCH_PROVIDER_MODE=openrouter`, `WORKBENCH_OPENROUTER_CALLS_ENABLED=true` and its own worker-only key. Its adapter requests strict JSON Schema and disables provider data collection. These OpenRouter-specific controls are not forwarded to DeepSeek; do not assume the providers have identical retention policies. Use synthetic or non-sensitive feedback in the public demo.
 
-Demo creation seeds sample messages with deterministic jobs so opening a workspace does not generate 24 paid requests. Submitting a new message while live mode is enabled automatically queues real analysis. For an existing sample, choose Analyze with AI on its detail page; existing fixture results are not evidence of an OpenRouter call. Automated regression tests remain isolated from paid calls.
+Compose passes the selected mode, model and enablement flags to API and worker, but secrets only to the worker. Never put a model key in frontend variables. The shipped example stays disabled for ordinary setup and automated tests. Changing environment values requires recreating the API/worker containers. Inspect queued jobs before switching: jobs retain their original provider, and work for an unconfigured provider fails explicitly instead of being silently rerouted. Use a new analysis run to process an existing message with the new provider; do not bulk-resubmit demo data.
+
+The owner-authorized live configuration has no cumulative call ceiling and no lifetime analysis limit per record. `unlimited` removes only the cumulative ceiling: durable counters still record every admitted attempt and survive restarts. A finite value remains a total ceiling across providers in the database; switching providers does not reset it. Zero admits no calls. Failed or timed-out attempts still count. Each job permits at most three attempts; input is capped at 4,000 characters and configured output at 800 tokens. These are attempt/token bounds, not an exact dollar limit or an exactly-once billing guarantee. Provider failures remain visible.
+
+Demo creation seeds sample messages with deterministic jobs so opening a workspace does not generate 24 paid requests. Submitting a new message while live mode is enabled automatically queues real analysis. For an existing sample, choose Analyze with AI on its detail page; existing fixture results are not evidence of a live model call. Automated regression tests remain isolated from paid calls.

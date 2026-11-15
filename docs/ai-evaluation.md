@@ -4,6 +4,8 @@ The demonstration needs to preserve the distinction between a concrete failure, 
 
 The fixed [four synthetic cases](../backend/evaluation/cases.json) were used to develop and check the prompt with OpenRouter / `openai/gpt-4.1-mini`. They are a regression sample, not a held-out accuracy benchmark. The evaluation sends the actual source text through the production prompt, transport and validator.
 
+These saved reports evaluate OpenRouter only. They do not establish the quality or availability of the direct DeepSeek adapter. A provider change requires a separate bounded real-model report and a browser-to-worker persistence check; intercepted transport tests are not substitutes for either.
+
 ## Recorded runs
 
 | Report                                                         | Declared-label and output checks | What it revealed                                                                                                |

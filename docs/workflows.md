@@ -10,7 +10,7 @@ Jobs have queued/leased/succeeded/failed/cancelled states. Leases last 30 second
 
 ## Interactive AI analysis
 
-Opening a demo workspace creates sample inputs and deterministic seed results. It does not trigger bulk paid analysis. An explicit analysis request on an existing record creates a new run using the configured OpenRouter model; it works for demo and account workspaces. The prior message and results remain intact.
+Opening a demo workspace creates sample inputs and deterministic seed results. It does not trigger bulk paid analysis. An explicit analysis request on an existing record creates a new run using the selected live provider and model; it works for demo and account workspaces. The prior message and results remain intact, including their original provider identity.
 
 A request identity is unique per record, so retrying an uncertain click returns the same run. Another deliberate click uses a new identity after the current run finishes. Only one run per record may be in flight; there is no lifetime run cap. The worker reserves one persisted live-call attempt before contacting the provider, including each retry. A finite budget is optional; local `unlimited` mode continues counting admitted attempts without rejecting them at a cumulative ceiling. Exhausted finite budgets, missing configuration, provider rejection and invalid output remain visible failures; none switch to deterministic output.
 

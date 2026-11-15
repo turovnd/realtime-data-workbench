@@ -1,6 +1,11 @@
 import { CircleCheck, Quote, Sparkles } from "lucide-react";
 
-import { isAiOutput } from "@/api";
+import {
+  formatProvider,
+  isAiOutput,
+  isAiProvider,
+  isSampleProvider,
+} from "@/api";
 import type { AnalysisState } from "@/api/feedback";
 import { formatAnalysisError, topics } from "@/components/feedback";
 import {
@@ -31,7 +36,9 @@ export const AnalysisCard = ({ analysis }: Props) => {
     !action.isPending &&
     (job?.status === "failed" || job?.status === "cancelled");
   const ai = isAiOutput(output);
-  const aiJob = job?.provider?.startsWith("openrouter/");
+  const sample = isSampleProvider(output?.provider);
+  const aiJob = isAiProvider(job?.provider);
+  const sampleJob = isSampleProvider(job?.provider);
 
   return (
     <Card aria-busy={busy}>
@@ -53,7 +60,7 @@ export const AnalysisCard = ({ analysis }: Props) => {
             </AlertDescription>
           </Alert>
         )}
-        {busy && !analysis.samplePending && (
+        {busy && (action.isPending || aiJob) && (
           <AnalysisProgress
             stage={
               action.isPending
@@ -65,6 +72,15 @@ export const AnalysisCard = ({ analysis }: Props) => {
             submittedAt={action.submittedAt}
           />
         )}
+        {busy && !action.isPending && !aiJob && !sampleJob && (
+          <Alert role="status">
+            <Spinner aria-hidden="true" />
+            <AlertTitle>Processing feedback</AlertTitle>
+            <AlertDescription>
+              Waiting for a result from this run.
+            </AlertDescription>
+          </Alert>
+        )}
         {action.error && !busy && (
           <Alert variant="destructive">
             <AlertTitle>Couldn’t start AI analysis</AlertTitle>
@@ -74,12 +90,16 @@ export const AnalysisCard = ({ analysis }: Props) => {
         {failed && !action.error && (
           <Alert variant="destructive">
             <AlertTitle>
-              {aiJob ? "AI analysis failed" : "Sample analysis unavailable"}
+              {aiJob
+                ? "AI analysis failed"
+                : sampleJob
+                  ? "Sample analysis unavailable"
+                  : "Analysis unavailable"}
             </AlertTitle>
             <AlertDescription>
-              {aiJob
-                ? formatAnalysisError(job?.error)
-                : "Run AI analysis to generate a fresh result from the original message."}
+              {sampleJob
+                ? "Run AI analysis to generate a fresh result from the original message."
+                : formatAnalysisError(job?.error)}
             </AlertDescription>
           </Alert>
         )}
@@ -105,7 +125,7 @@ export const AnalysisCard = ({ analysis }: Props) => {
                 <h2 className="text-sm font-medium">Previous result</h2>
               )}
               <Badge variant={ai ? "secondary" : "outline"}>
-                {ai ? "AI analysis" : "Sample analysis"}
+                {ai ? "AI analysis" : sample ? "Sample analysis" : "Analysis"}
               </Badge>
             </div>
             <div className="flex flex-wrap gap-2">
@@ -135,9 +155,7 @@ export const AnalysisCard = ({ analysis }: Props) => {
               ))}
             </div>
             <p className="text-xs text-muted-foreground">
-              {ai
-                ? `AI · ${output.provider.replace("openrouter/", "")} · `
-                : "Sample · "}
+              {formatProvider(output.provider)} ·{" "}
               {new Date(output.created_at).toLocaleString(undefined, {
                 dateStyle: "medium",
                 timeStyle: "short",

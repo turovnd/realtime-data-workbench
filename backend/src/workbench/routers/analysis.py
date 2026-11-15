@@ -38,7 +38,7 @@ async def analyze(
     workspace_id: Workspace,
     settings: AppSettings,
 ) -> RecordView:
-    if settings.provider_mode != "openrouter" or not settings.openrouter_calls_enabled:
+    if not settings.live_calls_enabled:
         raise HTTPException(
             status_code=503,
             detail="AI analysis is not configured. Enable the real provider to continue.",

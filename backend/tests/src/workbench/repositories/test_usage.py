@@ -62,3 +62,29 @@ async def test_zero_budget_denies_calls_without_creating_or_resetting_usage(
     assert not await reserve_live_call(database, 0)
     async with session_scope(database) as session:
         assert await session.scalar(select(ProviderUsage.calls)) == 1
+
+
+@pytest.mark.integration
+async def test_provider_switch_preserves_legacy_usage_and_shares_one_concurrent_ceiling(
+    database: AsyncEngine,
+) -> None:
+    async with session_scope(database) as session:
+        session.add(ProviderUsage(id="openrouter", calls=14))
+    attempts = await asyncio.gather(
+        *(reserve_live_call(database, 15, provider) for provider in ["deepseek", "openrouter"] * 4)
+    )
+    assert sum(attempts) == 1
+    async with session_scope(database) as session:
+        counts = {row.id: row.calls for row in await session.scalars(select(ProviderUsage))}
+    assert counts["openrouter"] >= 14
+    assert sum(counts.values()) == 15
+    assert not await reserve_live_call(database, 15, "deepseek")
+    assert not await reserve_live_call(database, 15, "openrouter")
+
+    await database.dispose()
+    assert await reserve_live_call(database, None, "deepseek")
+    assert not await reserve_live_call(database, 16, "openrouter")
+    async with session_scope(database) as session:
+        counts = {row.id: row.calls for row in await session.scalars(select(ProviderUsage))}
+    assert counts["deepseek"] >= 1
+    assert sum(counts.values()) == 16

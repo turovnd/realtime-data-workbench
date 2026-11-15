@@ -8,7 +8,13 @@ export const createDemoAdapter = (options: PreviewOptions = {}): Adapter => {
   const workspaceId = options.workspaceId ?? "browser";
   const restored = readPreview(options);
   let cursor = restored?.cursor ?? 1;
-  let records: FeedbackRecord[] = restored?.records ?? [];
+  let records: FeedbackRecord[] = (restored?.records ?? []).map(record => ({
+    ...record,
+    jobs: record.jobs.map(job => ({
+      ...job,
+      provider: job.provider ?? "browser-fixture/1",
+    })),
+  }));
   const batches: (Snapshot["batches"][number] & { ids: string[] })[] =
     restored?.batches ?? [];
   const identities = new Map(restored?.identities ?? []);
@@ -42,6 +48,7 @@ export const createDemoAdapter = (options: PreviewOptions = {}): Adapter => {
             attempts: initial ? 1 : 0,
             error: null,
             origin: "live",
+            provider: "browser-fixture/1",
           },
         ],
         outputs: [],
@@ -163,6 +170,7 @@ export const createDemoAdapter = (options: PreviewOptions = {}): Adapter => {
             attempts: 0,
             error: null,
             origin: "live",
+            provider: "browser-fixture/1",
           },
         ],
       };
@@ -224,6 +232,7 @@ export const createDemoAdapter = (options: PreviewOptions = {}): Adapter => {
           attempts: 0,
           error: null,
           origin: "backfill",
+          provider: "browser-fixture/1",
         })
       );
       batches.push({

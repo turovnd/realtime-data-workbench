@@ -47,8 +47,9 @@ async def test_worker_can_complete_more_than_twenty_calls_without_losing_usage(
 
 
 @pytest.mark.parametrize("budget", [0, 2])
+@pytest.mark.parametrize("provider", ["openrouter/test", "deepseek/deepseek-flash"])
 async def test_worker_keeps_zero_and_finite_budgets_effective(
-    database: AsyncEngine, budget: int
+    database: AsyncEngine, budget: int, provider: str
 ) -> None:
     await ingest(
         database,
@@ -58,7 +59,7 @@ async def test_worker_keeps_zero_and_finite_budgets_effective(
             )
             for index in range(3)
         ],
-        provider="openrouter/test",
+        provider=provider,
     )
     calls = 0
 
@@ -69,7 +70,7 @@ async def test_worker_keeps_zero_and_finite_budgets_effective(
 
     for _ in range(3):
         assert await process_one(
-            database, generators={"openrouter/test": mocked_provider}, live_budget=budget
+            database, generators={provider: mocked_provider}, live_budget=budget
         )
     assert calls == budget
     stored = (await snapshot(database)).records
@@ -79,3 +80,58 @@ async def test_worker_keeps_zero_and_finite_budgets_effective(
     assert all(record.jobs[0].error == "Live provider call budget exhausted" for record in rejected)
     async with session_scope(database) as session:
         assert await session.scalar(select(ProviderUsage.calls)) == (budget or None)
+
+
+async def test_switching_provider_does_not_bypass_existing_budget_or_relabel_history(
+    database: AsyncEngine,
+) -> None:
+    providers = ["openrouter/old-model", "deepseek/deepseek-flash"]
+    for index, provider in enumerate(providers):
+        await ingest(
+            database,
+            [
+                FeedbackInput(
+                    identity=f"switch-{index}", text=f"Export {index} fails.", channel="Support"
+                )
+            ],
+            provider=provider,
+        )
+    calls: list[str] = []
+
+    async def mocked_provider(text: str, config: Config) -> str:
+        calls.append(text)
+        return await generate_demo(text, config)
+
+    generators = dict.fromkeys(providers, mocked_provider)
+    assert await process_one(database, generators=generators, live_budget=1)
+    assert await process_one(database, generators=generators, live_budget=1)
+    records = (await snapshot(database)).records
+    by_provider = {record.jobs[0].provider: record for record in records}
+    assert calls == ["Export 0 fails."]
+    assert by_provider[providers[0]].outputs[0].provider == providers[0]
+    assert by_provider[providers[1]].outputs == []
+    assert by_provider[providers[1]].jobs[0].error == "Live provider call budget exhausted"
+    async with session_scope(database) as session:
+        old = await session.get(ProviderUsage, "openrouter")
+        assert old is not None and old.calls == 1
+        assert await session.get(ProviderUsage, "deepseek") is None
+
+
+async def test_unknown_injected_generator_cannot_bypass_paid_attempt_admission(
+    database: AsyncEngine,
+) -> None:
+    await ingest(
+        database,
+        [FeedbackInput(identity="unknown", text="Export fails.", channel="Support")],
+        provider="another-provider/model",
+    )
+
+    async def forbidden_provider(text: str, config: Config) -> str:
+        pytest.fail("A non-deterministic provider must reserve its attempt first")
+
+    assert await process_one(
+        database, generators={"another-provider/model": forbidden_provider}, live_budget=0
+    )
+    record = (await snapshot(database)).records[0]
+    assert record.outputs == []
+    assert record.jobs[0].error == "Live provider call budget exhausted"

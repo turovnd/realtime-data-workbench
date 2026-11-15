@@ -100,10 +100,18 @@ async def test_feedback_validation_and_concurrent_retry(database: AsyncEngine) -
         assert feed["total"] == 1 and len(feed["records"][0]["jobs"]) == 1
 
 
+@pytest.mark.parametrize("provider_mode", ["openrouter", "deepseek"])
 async def test_live_workspace_keeps_seeded_examples_free_but_analyzes_new_feedback(
     database: AsyncEngine,
+    provider_mode: str,
 ) -> None:
-    settings = Settings(provider_mode="openrouter", openrouter_calls_enabled=True)
+    settings = Settings.model_validate(
+        {
+            "provider_mode": provider_mode,
+            "openrouter_calls_enabled": True,
+            "deepseek_calls_enabled": True,
+        }
+    )
     async with AsyncClient(
         transport=ASGITransport(app=create_app(database, settings)), base_url="http://test"
     ) as client:

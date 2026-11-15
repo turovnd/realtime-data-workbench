@@ -2,7 +2,15 @@
 
 The agreed Feedback Desk MVP is implemented and published: feedback review, real AI analysis, preserved run history and isolated workspaces. Source verification and the local real-AI flow passed. The UI and backend are deployed, but hosted real-AI acceptance is blocked by an OpenRouter edge-policy rejection from the server. This is not a completed public AI demonstration.
 
-## Source verification
+## Direct DeepSeek integration
+
+The current source adds direct DeepSeek (`deepseek-flash`) behind the existing generation boundary. It uses JSON-object mode, disabled thinking, a ten-second total deadline and the same strict domain and exact-source validation. The UI identifies DeepSeek results and preserves historical OpenRouter provenance. Provider selection cannot silently reroute an existing job or replace a failed AI call with a sample. Shared transactional admission retains previous provider counts.
+
+Verification of this change: 200 backend tests passed against disposable PostgreSQL; Ruff, formatting and mypy passed. The frontend passed 58 unit tests, eight targeted controlled browser scenarios, two desktop/mobile preview checks, type checks, lint, formatting and build. OpenAPI still describes 16 paths and the generated client is reproducible. Independent review's total-deadline concern was fixed and tested against a response that keeps sending chunks.
+
+A probe from the actual server reached DeepSeek's authentication boundary (HTTP 401 rather than the OpenRouter edge-policy 403). A DeepSeek key has not yet been supplied, so no authenticated DeepSeek generation, live quality evaluation, public provider switch or deployment of this candidate is claimed. The source is prepared for the requested switch; the published identities below remain the existing OpenRouter deployment until a real server-side check succeeds. Existing OpenRouter evaluation reports do not establish DeepSeek quality.
+
+## Published application verification
 
 | Boundary           | Observed evidence                                                                                                                                                                                                                                                                                                         |
 | ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |

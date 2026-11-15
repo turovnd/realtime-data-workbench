@@ -31,8 +31,8 @@ async def process_one(
             selected = generate_demo
         if selected is None:
             raise TerminalProviderError("Selected provider is not configured")
-        if claim.provider.startswith("openrouter/") and not await reserve_live_call(
-            engine, live_budget
+        if claim.provider != "deterministic-rules/1" and not await reserve_live_call(
+            engine, live_budget, claim.provider.partition("/")[0]
         ):
             await finish_job(
                 engine, claim, None, "Live provider call budget exhausted", retryable=False

@@ -3,8 +3,10 @@ import type { Page } from "@playwright/test";
 import type { FeedbackRecord } from "../../src/api/contracts";
 
 /** Controlled UI contract fixture. It never sends messages to a provider. */
-export const mockSubmission = async (page: Page) => {
-  const provider = "openrouter/ui-test-model";
+export const mockSubmission = async (
+  page: Page,
+  provider = "openrouter/ui-test-model"
+) => {
   const identity = {
     workspace_id: "submission-workspace",
     kind: "demo",

@@ -10,7 +10,7 @@ import {
 import {
   currentJob,
   currentOutput,
-  isAiOutput,
+  isSampleProvider,
   type FeedbackRecord,
 } from "@/api";
 import { Badge } from "@/components/ui";
@@ -36,7 +36,8 @@ export const Status = ({ record }: { record: FeedbackRecord }) => {
       }
     >
       <Icon className={status === "leased" ? "animate-spin" : undefined} />
-      {status === "succeeded" && !isAiOutput(currentOutput(record))
+      {status === "succeeded" &&
+      isSampleProvider(currentOutput(record)?.provider)
         ? "Sample analysis"
         : statusLabels[status]}
     </Badge>

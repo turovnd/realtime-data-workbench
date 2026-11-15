@@ -82,7 +82,10 @@ const fixtureRecord = (session: number): Record => {
 };
 
 /** All API calls are intercepted, including auth. This fixture never reaches a provider. */
-export const mockAnalysis = async (page: Page) => {
+export const mockAnalysis = async (
+  page: Page,
+  provider = "openrouter/test-provider"
+) => {
   let session = 0;
   let record = fixtureRecord(1);
   let revision = 1;
@@ -128,7 +131,7 @@ export const mockAnalysis = async (page: Page) => {
           enriched: record.jobs.at(-1)?.status === "succeeded" ? 1 : 0,
           failed: record.jobs.at(-1)?.status === "failed" ? 1 : 0,
           batches: [],
-          provider: "openrouter/test-provider",
+          provider,
         });
       if (path === "/api/feedback" && request.method() === "GET")
         return respond({
@@ -178,7 +181,7 @@ export const mockAnalysis = async (page: Page) => {
           attempts: 0,
           error: null,
           origin: "analysis",
-          provider: "openrouter/test-provider",
+          provider,
         });
         revision++;
         const admitted = structuredClone(recordView());
@@ -226,7 +229,7 @@ export const mockAnalysis = async (page: Page) => {
         intent: "issue",
         summary,
         evidence: [record.text],
-        provider: "openrouter/test-provider",
+        provider,
         created_at: new Date().toISOString(),
       });
       revision++;

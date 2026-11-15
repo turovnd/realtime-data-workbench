@@ -56,6 +56,7 @@ export type {
 } from "./contracts";
 
 export { ApiError } from "./errors";
+export { isAiProvider, isSampleProvider, formatProvider } from "./providers";
 export { createDemoAdapter } from "./demo";
 export { createDemoFeedAdapter } from "./demo-feed";
 export { createSavedFeedbackStorage } from "./saved-feedback";

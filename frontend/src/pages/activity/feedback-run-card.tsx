@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { ChevronDown, ChevronUp } from "lucide-react";
 
-import type { BatchItem } from "@/api";
+import { isSampleProvider, type BatchItem } from "@/api";
 import { statusLabels } from "@/components/feedback";
 import {
   Badge,
@@ -23,7 +23,7 @@ type Props = { item: BatchItem };
 export const FeedbackRunCard = ({ item }: Props) => {
   const [open, setOpen] = useState(false);
   const { job } = item;
-  const sample = !!job && !job.provider?.startsWith("openrouter/");
+  const sample = isSampleProvider(job?.provider);
   const label = job
     ? job.status === "queued"
       ? "Queued"

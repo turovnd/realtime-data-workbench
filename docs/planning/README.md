@@ -45,11 +45,11 @@ Problems, Roadmap and Team are outside the agreed MVP. They are not pending deli
 
 ## Implementation and review
 
-| Capability                                | Exists in code                                                                              | Verification and review                                                          |
-| ----------------------------------------- | ------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------- |
-| Personal accounts and isolated workspaces | Registration, login, session ownership and protected routes                                 | Session isolation is covered by API and browser checks.                          |
-| Inbox and feedback details                | Filters, cursor pagination, source message, latest analysis and evidence                    | Guided example, direct detail routes and browser journeys.                       |
-| Feedback submission and AI analysis       | Generated API client, durable jobs, live OpenRouter integration, explicit repeated analysis | Provider contracts, persisted worker results and separate live-model evaluation. |
-| Activity                                  | Automatic, manual and grouped runs; exact historical results; cursor pagination             | Cursor scope, worker recovery and exact run results.                             |
+| Capability                                | Exists in code                                                                               | Verification and review                                                          |
+| ----------------------------------------- | -------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------- |
+| Personal accounts and isolated workspaces | Registration, login, session ownership and protected routes                                  | Session isolation is covered by API and browser checks.                          |
+| Inbox and feedback details                | Filters, cursor pagination, source message, latest analysis and evidence                     | Guided example, direct detail routes and browser journeys.                       |
+| Feedback submission and AI analysis       | Generated API client, durable jobs, explicit live-provider integration and repeated analysis | Provider contracts, persisted worker results and separate live-model evaluation. |
+| Activity                                  | Automatic, manual and grouped runs; exact historical results; cursor pagination              | Cursor scope, worker recovery and exact run results.                             |
 
 The agreed MVP tasks are implemented. The delivery includes a guided real-AI scenario and a problem-first project explanation. Published source and runtime evidence are recorded separately from owner acceptance. See the delivery ledger for the checked revision and runtime. New product capabilities require a separate scope decision.
