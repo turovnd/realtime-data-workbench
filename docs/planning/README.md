@@ -52,4 +52,4 @@ Problems, Roadmap and Team are outside the agreed MVP. They are not pending deli
 | Feedback submission and AI analysis       | Generated API client, durable jobs, live OpenRouter integration, explicit repeated analysis | Provider contracts, persisted worker results and separate live-model evaluation. |
 | Activity                                  | Automatic, manual and grouped runs; exact historical results; cursor pagination             | Cursor scope, worker recovery and exact run results.                             |
 
-The agreed MVP tasks are implemented. The current delivery adds a guided real-AI scenario and a problem-first project explanation, then publishes the verified source and matching demo. See the delivery ledger for the checked revision and runtime. New product capabilities require a separate scope decision.
+The agreed MVP tasks are implemented. The delivery includes a guided real-AI scenario and a problem-first project explanation. Published source and runtime evidence are recorded separately from owner acceptance. See the delivery ledger for the checked revision and runtime. New product capabilities require a separate scope decision.

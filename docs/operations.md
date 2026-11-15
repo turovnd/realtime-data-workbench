@@ -43,7 +43,7 @@ docker compose run --rm migrate /app/.venv/bin/python -m workbench.db --adopt
 
 Then verify the stored revision and schema, and start the reviewed API/worker image. Subsequent deployments use the normal migration command. Adoption rejects unknown shapes; do not bypass it with `stamp head`. Known index normalization can acquire table locks. The migration keeps immutable-history triggers and existing data; downgrades reject deletion of populated data or incompatible repeated-run history.
 
-The current refactor has not performed this adoption on the active local or hosted database. Test-database checks do not establish that a deployment has happened.
+The hosted database has been adopted to Alembic `0002` after a fresh backup and an isolated restore rehearsal. Existing records were compared before and after adoption; the published source and image are recorded in [delivery status](delivery-status.md). Other existing local databases still require their own adoption procedure.
 
 ## Health, smoke and rollback
 
@@ -55,7 +55,7 @@ Rollback to the preceding compatible API/worker image within this project. A sch
 
 ## Backup and restore
 
-A persistent Docker volume is not a backup. Arrange encrypted off-host exports, a retention policy and a restoration test into a new isolated database. Verify roles, schema, row counts and a full synthetic workflow before relying on the backup. No successful off-host restore is currently claimed. PostgreSQL's [SQL dump documentation](https://www.postgresql.org/docs/current/backup-dump.html) explains per-database dumps and separately handled cluster roles.
+A persistent Docker volume is not a backup. Arrange encrypted off-host exports, a retention policy and a restoration test into a new isolated database. Verify roles, schema, row counts and a full synthetic workflow before relying on the backup. This release retained a hash-verified off-host copy and successfully restored the backup into isolated PostgreSQL before adoption. This one release rehearsal does not establish scheduled backups or recurring recovery drills. PostgreSQL's [SQL dump documentation](https://www.postgresql.org/docs/current/backup-dump.html) explains per-database dumps and separately handled cluster roles.
 
 One host remains a shared failure domain. No high availability or measured throughput guarantee is claimed.
 

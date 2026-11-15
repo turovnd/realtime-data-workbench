@@ -6,6 +6,8 @@ Feedback Desk turns a message into a short AI summary, a topic, an intent and su
 
 **[Try the demo](https://turovnd-feedback-desk.vercel.app)** · [API docs](https://realtime-api.b2p.space/docs) · [Architecture](docs/architecture.md) · [Verification and release](docs/delivery-status.md)
 
+**Hosted AI status:** the UI and API are updated, but OpenRouter currently rejects requests from the server. Real analysis is verified locally; the public AI scenario remains blocked. See [release evidence](docs/delivery-status.md#hosted-ai-blocker).
+
 ## Try one complete scenario
 
 1. Choose **Try the demo**. No account is required; sample feedback belongs to an isolated workspace.
