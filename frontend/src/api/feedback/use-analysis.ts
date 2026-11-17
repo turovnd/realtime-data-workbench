@@ -20,7 +20,11 @@ export const useAnalysis = (id: string) => {
     queryKey: key,
     queryFn: ({ signal }) => adapter.record(id, signal),
     enabled: online,
+    refetchOnWindowFocus: query => !query.state.error,
+    refetchOnReconnect: query => !query.state.error,
     refetchInterval: query => {
+      if (query.state.error) return false;
+
       const status = query.state.data && currentJob(query.state.data)?.status;
 
       return status === "queued" || status === "leased" ? 1000 : 10000;

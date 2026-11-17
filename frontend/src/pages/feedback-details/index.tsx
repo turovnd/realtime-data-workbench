@@ -5,7 +5,7 @@ import { Path } from "@/router/paths";
 import { ApiError, isAiOutput } from "@/api";
 import { useAnalysis } from "@/api/feedback";
 import { Status } from "@/components/feedback";
-import { PageLoading, PageMessage } from "@/components/layout";
+import { PageLoading, PageMessage, RequestError } from "@/components/layout";
 import {
   Alert,
   AlertDescription,
@@ -46,6 +46,15 @@ const Details = ({ id }: { id: string }) => {
         title="Feedback not found"
         description="This feedback is no longer available in your workspace."
         backTo={back}
+      />
+    );
+  if (!record && online && query.error)
+    return (
+      <RequestError
+        title="We couldn’t load this feedback"
+        error={query.error}
+        disabled={query.isFetching}
+        onRetry={() => void query.refetch()}
       />
     );
   if (!record)
@@ -106,13 +115,13 @@ const Details = ({ id }: { id: string }) => {
         </Alert>
       )}
       {query.error && (
-        <Alert variant="destructive">
-          <AlertTitle>Updates unavailable</AlertTitle>
-          <AlertDescription>
-            Your last loaded feedback is still shown. Reconnect to get the
-            latest status.
-          </AlertDescription>
-        </Alert>
+        <RequestError
+          title="Updates unavailable"
+          description="Your last loaded feedback is still shown."
+          error={query.error}
+          disabled={!online || query.isFetching}
+          onRetry={() => void query.refetch()}
+        />
       )}
       <div className="grid items-start gap-6 xl:grid-cols-2">
         <FeedbackCard record={record} />

@@ -3,11 +3,10 @@ import { Activity, ArrowRight } from "lucide-react";
 
 import { Path } from "@/router/paths";
 import { useInfiniteScroll } from "@/hooks";
-import { PageLoading, PageMessage } from "@/components/layout";
+import { PageLoading, PageMessage, RequestError } from "@/components/layout";
 import {
   Alert,
   AlertDescription,
-  AlertTitle,
   Button,
   Empty,
   EmptyContent,
@@ -52,21 +51,13 @@ export const ActivityPage = () => {
         </Alert>
       )}
       {query.error && query.data && (
-        <Alert variant="destructive">
-          <AlertTitle>Couldn’t update activity</AlertTitle>
-          <AlertDescription>
-            Your loaded activity is still shown. Try again to get the latest
-            runs.
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={!online || query.isFetching}
-              onClick={retry}
-            >
-              Try again
-            </Button>
-          </AlertDescription>
-        </Alert>
+        <RequestError
+          title="Couldn’t update activity"
+          description="Your loaded activity is still shown."
+          error={query.error}
+          disabled={!online || query.isFetching}
+          onRetry={retry}
+        />
       )}
       {cancel.error && (
         <Alert variant="destructive">
@@ -75,26 +66,19 @@ export const ActivityPage = () => {
       )}
       {query.isPending && online ? (
         <PageLoading label="Loading activity" embedded />
+      ) : !query.data && online ? (
+        <RequestError
+          title="We couldn’t load activity"
+          error={query.error}
+          disabled={query.isFetching}
+          onRetry={retry}
+        />
       ) : !query.data ? (
         <PageMessage
-          title={
-            online
-              ? "We couldn’t load activity"
-              : "Activity is unavailable offline"
-          }
-          description={
-            online
-              ? "Check your connection and try again."
-              : "Reconnect to see your analysis runs."
-          }
+          title="Activity is unavailable offline"
+          description="Reconnect to see your analysis runs."
           backTo={Path.Feedback}
-        >
-          {online && (
-            <Button variant="outline" onClick={retry}>
-              Try again
-            </Button>
-          )}
-        </PageMessage>
+        />
       ) : !items.length ? (
         <Empty className="min-h-80 rounded-xl border bg-card">
           <EmptyHeader>

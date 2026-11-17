@@ -10,7 +10,9 @@ export const useFeedbackStatus = (online: boolean) => {
     queryKey: ["feedback-status", workspace],
     queryFn: ({ signal }) => adapter.status(signal),
     enabled: online,
-    refetchInterval: 3000,
-    retry: 1,
+    refetchInterval: query => (query.state.error ? false : 3000),
+    refetchOnWindowFocus: query => !query.state.error,
+    refetchOnReconnect: query => !query.state.error,
+    retry: false,
   });
 };

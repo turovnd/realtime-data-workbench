@@ -19,7 +19,9 @@ export const useActivity = () => {
     initialPageParam: null as string | null,
     getNextPageParam: page => page.next_cursor ?? undefined,
     enabled: online,
-    refetchInterval: 3000,
+    refetchInterval: query => (query.state.error ? false : 3000),
+    refetchOnWindowFocus: query => !query.state.error,
+    refetchOnReconnect: query => !query.state.error,
     retry: false,
   });
   const items = [

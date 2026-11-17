@@ -269,7 +269,8 @@ export const mockActivity = async (
             });
       if (url.pathname === "/api/feedback") {
         const limit = Number(url.searchParams.get("limit") ?? 12);
-        const offset = url.searchParams.has("cursor") ? limit : 0;
+        const offset =
+          url.searchParams.get("cursor") === "fixture-feed.next" ? limit : 0;
         return respond({
           ...identity(),
           records: records.slice(offset, offset + limit),

@@ -16,7 +16,7 @@ import {
   useFeedbackSelection,
   useFilters,
 } from "@/components/feedback";
-import { PageLoading } from "@/components/layout";
+import { PageLoading, RequestError } from "@/components/layout";
 import {
   Alert,
   AlertDescription,
@@ -46,6 +46,8 @@ export const FeedbackPage = () => {
     state.mode === "browser-demo" ||
     liveAnalysis ||
     isSampleProvider(state.status.data?.provider);
+
+  const requestError = state.query.error ?? state.status.error;
 
   const openBlank = () => {
     if (!state.online || !availabilityKnown) return;
@@ -120,7 +122,7 @@ export const FeedbackPage = () => {
           </AlertDescription>
         </Alert>
       )}
-      {(state.status.error || state.status.data) && !availabilityKnown && (
+      {state.status.data && !availabilityKnown && !requestError && (
         <Alert variant="destructive">
           <AlertTitle>Analysis status unavailable</AlertTitle>
           <AlertDescription>
@@ -179,23 +181,22 @@ export const FeedbackPage = () => {
           </Button>
         </div>
       )}
-      {state.query.error && (
-        <Alert variant="destructive">
-          <AlertTitle>We couldn’t load feedback</AlertTitle>
-          <AlertDescription>
-            {state.query.error.message}
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => {
-                selection.clear();
-                state.refresh();
-              }}
-            >
-              Try again
-            </Button>
-          </AlertDescription>
-        </Alert>
+      {requestError && (
+        <RequestError
+          title={
+            state.query.error
+              ? "We couldn’t load feedback"
+              : "Couldn’t update analysis status"
+          }
+          error={requestError}
+          disabled={
+            !state.online || state.query.isFetching || state.status.isFetching
+          }
+          onRetry={() => {
+            selection.clear();
+            state.refresh();
+          }}
+        />
       )}
       {analysis.error && (
         <Alert variant="destructive">
@@ -214,7 +215,7 @@ export const FeedbackPage = () => {
           hasMore={!!state.query.hasNextPage}
           loadingMore={state.query.isFetchingNextPage}
           onLoadMore={() => void state.query.fetchNextPage()}
-          disabled={!state.online || !availabilityKnown}
+          disabled={!state.online || !availabilityKnown || !!requestError}
           filtered={filtered}
           onClear={() => {
             filters.clear();

@@ -86,6 +86,30 @@ export const api = new Api({
       : undefined;
     const response = await fetch(input, { ...options, cache: "no-store" });
 
+    const contentType = response.headers
+      .get("content-type")
+      ?.split(";")[0]
+      .trim()
+      .toLowerCase();
+    const isJson =
+      contentType === "application/json" || contentType?.endsWith("+json");
+
+    if (response.headers.get("x-vercel-mitigated") === "challenge") {
+      throw new ApiError(
+        "A browser security check is required. Reload the page to continue.",
+        response.status,
+        "reload"
+      );
+    }
+
+    if (!isJson && (!response.ok || contentType === "text/html")) {
+      throw new ApiError(
+        "The service returned an unexpected response. Try again or reload the page.",
+        response.status,
+        "reload"
+      );
+    }
+
     if (!response.ok) {
       if (response.status === 401 && token && token === session?.token) {
         setSession(null);
@@ -96,9 +120,7 @@ export const api = new Api({
       const error = z.object({ detail: z.string() }).safeParse(payload);
 
       throw new ApiError(
-        error.success
-          ? error.data.detail
-          : `Request failed (${response.status}). Try again.`,
+        error.success ? error.data.detail : "The request failed. Try again.",
         response.status
       );
     }

@@ -144,3 +144,83 @@ describe("session transitions", () => {
     expect(auth.getSession()?.workspace_id).toBe("next");
   });
 });
+
+describe("request recovery", () => {
+  it("preserves JSON API detail and status without recommending a page reload", async () => {
+    const auth = await import("@/api/auth");
+    vi.stubGlobal(
+      "fetch",
+      vi
+        .fn()
+        .mockResolvedValue(
+          Response.json(
+            { detail: "Activity is temporarily unavailable" },
+            { status: 503 }
+          )
+        )
+    );
+
+    const error = await auth.api.api
+      .listActivity({ limit: 10 })
+      .catch(error => error);
+
+    expect(error).toBeInstanceOf(auth.ApiError);
+    expect(error.message).toBe("Activity is temporarily unavailable");
+    expect(error.status).toBe(503);
+    expect(error.recovery).toBe("retry");
+  });
+
+  it("recognizes an explicit platform challenge without clearing the signed-in session", async () => {
+    const auth = await import("@/api/auth");
+    auth.setSession(identity("current"));
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        new Response("<html>private challenge response</html>", {
+          status: 401,
+          headers: {
+            "content-type": "text/html",
+            "x-vercel-mitigated": "challenge",
+          },
+        })
+      )
+    );
+
+    const error = await auth.api.api.getFeedbackStatus().catch(error => error);
+
+    expect(error.message).toBe(
+      "A browser security check is required. Reload the page to continue."
+    );
+    expect(error.message).not.toContain("private challenge response");
+    expect(error.status).toBe(401);
+    expect(error.recovery).toBe("reload");
+    expect(auth.getSession()?.token).toBe("current");
+  });
+
+  it.each([200, 429])(
+    "treats an HTML %s response as unexpected without inventing a challenge",
+    async status => {
+      const auth = await import("@/api/auth");
+      vi.stubGlobal(
+        "fetch",
+        vi.fn().mockResolvedValue(
+          new Response("<html>private upstream page</html>", {
+            status,
+            headers: { "content-type": "text/html; charset=utf-8" },
+          })
+        )
+      );
+
+      const error = await auth.api.api
+        .listActivity({ limit: 10 })
+        .catch(error => error);
+
+      expect(error.message).toBe(
+        "The service returned an unexpected response. Try again or reload the page."
+      );
+      expect(error.message).not.toMatch(/security|private upstream page/);
+      expect(error.status).toBe(status);
+      expect(error.recovery).toBe("reload");
+    }
+  );
+});

@@ -3,10 +3,10 @@ import { useInfiniteQuery } from "@tanstack/react-query";
 
 import { adapter, ApiError, getSession } from "@/api";
 import { useInfiniteScroll } from "@/hooks";
+import { RequestError } from "@/components/layout";
 import {
   Alert,
   AlertDescription,
-  AlertTitle,
   Button,
   Separator,
   Spinner,
@@ -23,8 +23,10 @@ export const RunDetails = ({ id, open, online, running }: Props) => {
     initialPageParam: null as string | null,
     getNextPageParam: page => page.next_cursor,
     enabled: open && online,
+    refetchOnWindowFocus: query => !query.state.error,
+    refetchOnReconnect: query => !query.state.error,
     refetchInterval: query => {
-      if (!open || !online) return false;
+      if (!open || !online || query.state.error) return false;
       const pending = query.state.data?.pages.some(page =>
         page.items.some(
           item => item.job?.status === "queued" || item.job?.status === "leased"
@@ -60,28 +62,20 @@ export const RunDetails = ({ id, open, online, running }: Props) => {
         </p>
       )}
       {query.error && (
-        <Alert variant="destructive">
-          <AlertTitle>Couldn’t load run details</AlertTitle>
-          <AlertDescription>
-            {query.error.message}
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={!online || query.isFetching}
-              onClick={() =>
-                void (query.isFetchNextPageError &&
-                !(
-                  query.error instanceof ApiError &&
-                  [400, 410].includes(query.error.status)
-                )
-                  ? query.fetchNextPage()
-                  : query.refetch())
-              }
-            >
-              Try again
-            </Button>
-          </AlertDescription>
-        </Alert>
+        <RequestError
+          title="Couldn’t load run details"
+          error={query.error}
+          disabled={!online || query.isFetching}
+          onRetry={() =>
+            void (query.isFetchNextPageError &&
+            !(
+              query.error instanceof ApiError &&
+              [400, 410].includes(query.error.status)
+            )
+              ? query.fetchNextPage()
+              : query.refetch())
+          }
+        />
       )}
       {items.map((item, index) => (
         <Fragment key={item.record_id}>
@@ -106,7 +100,7 @@ export const RunDetails = ({ id, open, online, running }: Props) => {
                 variant="outline"
                 size="sm"
                 onClick={loadMore}
-                disabled={!online || query.isFetching}
+                disabled={!online || query.isFetching || !!query.error}
               >
                 {query.isFetchingNextPage && (
                   <Spinner data-icon="inline-start" aria-hidden="true" />
