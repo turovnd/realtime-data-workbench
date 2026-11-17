@@ -20,7 +20,7 @@ pnpm install --frozen-lockfile
 VITE_API_URL=http://127.0.0.1:8002 pnpm --dir frontend dev
 ```
 
-Open `http://127.0.0.1:5174`. Without `VITE_API_URL`, the app runs an explicitly labelled browser fixture and disables account sign-in. `VITE_API_URL=same-origin` is used by the local Docker web proxy. Vercel uses the bare HTTPS API origin instead.
+Open `http://127.0.0.1:5174`. Without `VITE_API_URL`, the app runs an explicitly labelled browser fixture and disables account sign-in. `VITE_API_URL=same-origin` is used by the local Docker web proxy and the [Vercel Services configuration](vercel.md). The older frontend-only deployment uses the bare HTTPS API origin; [delivery status](delivery-status.md) records the current public topology.
 
 ## Regenerate the API client
 
@@ -72,24 +72,27 @@ Review generated revisions before applying them. Data changes, PostgreSQL functi
 
 ## Environment
 
-| Setting                              | Meaning                                                                 |
-| ------------------------------------ | ----------------------------------------------------------------------- |
-| `POSTGRES_PASSWORD`                  | Compose database credential; replace the example.                       |
-| `WORKBENCH_DATABASE_URL`             | Native async PostgreSQL connection URL.                                 |
-| `WORKBENCH_IMAGE`                    | Versioned backend deployment image.                                     |
-| `WORKBENCH_ALLOWED_ORIGINS`          | JSON array of exact browser origins.                                    |
-| `FORWARDED_ALLOW_IPS`                | Uvicorn's verified proxy peer; never `*`.                               |
-| `VITE_API_URL`                       | Public API origin: `https://realtime-api.b2p.space` on Vercel.          |
-| `WORKBENCH_PROVIDER_MODE`            | `deterministic` by default; explicit `openrouter` or `deepseek` opt-in. |
-| `WORKBENCH_OPENROUTER_CALLS_ENABLED` | Separate live-call switch, default false.                               |
-| `WORKBENCH_OPENROUTER_API_KEY`       | Worker-only secret.                                                     |
-| `WORKBENCH_OPENROUTER_MODEL`         | Baseline default `openai/gpt-4.1-mini`.                                 |
-| `WORKBENCH_OPENROUTER_MAX_TOKENS`    | Default 800; bounded to 100–1,200.                                      |
-| `WORKBENCH_DEEPSEEK_CALLS_ENABLED`   | Separate DeepSeek live-call switch, default false.                      |
-| `WORKBENCH_DEEPSEEK_API_KEY`         | Worker-only DeepSeek secret.                                            |
-| `WORKBENCH_DEEPSEEK_MODEL`           | Default `deepseek-flash`.                                               |
-| `WORKBENCH_DEEPSEEK_MAX_TOKENS`      | Default 800; bounded to 100–1,200.                                      |
-| `WORKBENCH_LIVE_CALL_BUDGET`         | Persisted attempt ceiling: default 3; 0–100, or `unlimited`.            |
+| Setting                              | Meaning                                                                                                             |
+| ------------------------------------ | ------------------------------------------------------------------------------------------------------------------- |
+| `POSTGRES_PASSWORD`                  | Compose database credential; replace the example.                                                                   |
+| `WORKBENCH_DATABASE_URL`             | Runtime PostgreSQL connection URL.                                                                                  |
+| `WORKBENCH_MIGRATION_DATABASE_URL`   | Optional direct migration connection; falls back to Neon's `WORKBENCH_DATABASE_URL_UNPOOLED`, then the runtime URL. |
+| `WORKBENCH_QUEUE_ENABLED`            | Enable Vercel publication; false for the local polling worker.                                                      |
+| `WORKBENCH_QUEUE_REGION`             | Vercel queue region; default `iad1`.                                                                                |
+| `WORKBENCH_IMAGE`                    | Versioned backend deployment image.                                                                                 |
+| `WORKBENCH_ALLOWED_ORIGINS`          | JSON array of exact browser origins.                                                                                |
+| `FORWARDED_ALLOW_IPS`                | Uvicorn's verified proxy peer; never `*`.                                                                           |
+| `VITE_API_URL`                       | Public API origin or `same-origin` when frontend and API share routing.                                             |
+| `WORKBENCH_PROVIDER_MODE`            | `deterministic` by default; explicit `openrouter` or `deepseek` opt-in.                                             |
+| `WORKBENCH_OPENROUTER_CALLS_ENABLED` | Separate live-call switch, default false.                                                                           |
+| `WORKBENCH_OPENROUTER_API_KEY`       | Server-side provider secret.                                                                                        |
+| `WORKBENCH_OPENROUTER_MODEL`         | Baseline default `openai/gpt-4.1-mini`.                                                                             |
+| `WORKBENCH_OPENROUTER_MAX_TOKENS`    | Default 800; bounded to 100–1,200.                                                                                  |
+| `WORKBENCH_DEEPSEEK_CALLS_ENABLED`   | Separate DeepSeek live-call switch, default false.                                                                  |
+| `WORKBENCH_DEEPSEEK_API_KEY`         | Server-side DeepSeek secret.                                                                                        |
+| `WORKBENCH_DEEPSEEK_MODEL`           | Default `deepseek-flash`.                                                                                           |
+| `WORKBENCH_DEEPSEEK_MAX_TOKENS`      | Default 800; bounded to 100–1,200.                                                                                  |
+| `WORKBENCH_LIVE_CALL_BUDGET`         | Persisted attempt ceiling: default 3; 0–100, or `unlimited`.                                                        |
 
 Live processing requires explicit enablement and either available durable budget or the explicit `unlimited` setting. Demo initialization deliberately uses deterministic jobs. Changing the default provider does not overwrite a record's existing immutable configuration result. No model secret belongs in a `VITE_*` value. See [workflows](workflows.md) and [limits](limits.md).
 

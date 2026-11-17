@@ -2,7 +2,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, Path, Query
 
-from workbench.dependencies import AppSettings, Database, Workspace
+from workbench.dependencies import AppSettings, Database, Dispatcher, Workspace
 from workbench.logic.backfill_details import backfill_page
 from workbench.logic.backfills import cancel_backfill, start_backfill
 from workbench.repositories.jobs import retry_job
@@ -63,11 +63,15 @@ async def detail(
     responses=errors(401, 403, 409, 413),
 )
 async def backfill(
-    request: BackfillInput, database: Database, workspace_id: Workspace, settings: AppSettings
+    request: BackfillInput,
+    database: Database,
+    workspace_id: Workspace,
+    settings: AppSettings,
+    dispatcher: Dispatcher,
 ) -> BackfillCreated:
-    return BackfillCreated(
-        id=await start_backfill(database, request, workspace_id, settings.provider_id)
-    )
+    batch_id = await start_backfill(database, request, workspace_id, settings.provider_id)
+    await dispatcher.notify(workspace_id, batch_id=batch_id)
+    return BackfillCreated(id=batch_id)
 
 
 @router.post(
@@ -109,7 +113,9 @@ async def retry(
     job_id: Annotated[str, Path(description="Job id from a feedback record's processing history")],
     database: Database,
     workspace_id: Workspace,
+    dispatcher: Dispatcher,
     _body: EmptyRequest | None = None,
 ) -> OkResponse:
     await retry_job(database, job_id, workspace_id)
+    await dispatcher.notify(workspace_id, job_ids=[job_id])
     return OkResponse()

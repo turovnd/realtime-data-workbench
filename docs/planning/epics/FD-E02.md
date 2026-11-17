@@ -1,7 +1,7 @@
 ---
 id: FD-E02
 type: epic
-status: implemented
+status: in-progress
 ---
 
 # FD-E02: Process and reprocess reliably

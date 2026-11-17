@@ -6,6 +6,7 @@ from fastapi import Depends, HTTPException
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.ext.asyncio import AsyncEngine
 
+from workbench.infrastructure.queue import JobDispatcher
 from workbench.repositories.sessions import identity
 from workbench.schemas.auth import Identity
 from workbench.settings import Settings
@@ -19,8 +20,13 @@ def get_settings() -> Settings:
     raise RuntimeError("Settings dependency was not configured by create_app")
 
 
+def get_dispatcher() -> JobDispatcher:
+    raise RuntimeError("Queue dependency was not configured by create_app")
+
+
 Database = Annotated[AsyncEngine, Depends(get_database)]
 AppSettings = Annotated[Settings, Depends(get_settings)]
+Dispatcher = Annotated[JobDispatcher, Depends(get_dispatcher)]
 session_bearer = HTTPBearer(
     auto_error=False,
     scheme_name="WorkspaceBearer",

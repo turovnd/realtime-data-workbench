@@ -76,3 +76,32 @@ def test_other_provider_enablement_does_not_enable_selected_provider() -> None:
     settings = Settings(provider_mode="deepseek", openrouter_calls_enabled=True)
     assert not settings.live_calls_enabled
     assert settings.provider_id == "deepseek/deepseek-flash"
+
+
+def test_migration_database_url_is_an_optional_separate_connection(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.delenv("WORKBENCH_MIGRATION_DATABASE_URL", raising=False)
+    monkeypatch.delenv("WORKBENCH_DATABASE_URL_UNPOOLED", raising=False)
+    assert Settings().migration_database_url is None
+    monkeypatch.setenv("WORKBENCH_MIGRATION_DATABASE_URL", "postgresql://migration-host/database")
+    settings = Settings(database_url="postgresql://runtime-pooler/database")
+    assert settings.migration_database_url == "postgresql://migration-host/database"
+    assert settings.database_url == "postgresql://runtime-pooler/database"
+
+
+def test_neon_deployment_direct_url_is_used_without_static_preview_credentials(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.delenv("WORKBENCH_MIGRATION_DATABASE_URL", raising=False)
+    monkeypatch.setenv("WORKBENCH_DATABASE_URL", "postgresql://preview-pooler/database")
+    monkeypatch.setenv("WORKBENCH_DATABASE_URL_UNPOOLED", "postgresql://preview-direct/database")
+    settings = Settings()
+    assert settings.database_url == "postgresql://preview-pooler/database"
+    assert settings.migration_database_url == "postgresql://preview-direct/database"
+
+    monkeypatch.setenv("WORKBENCH_MIGRATION_DATABASE_URL", "postgresql://explicit-direct/database")
+    assert Settings().migration_database_url == "postgresql://explicit-direct/database"
+    assert Settings(
+        migration_database_url="postgresql://test-injected/database"
+    ).migration_database_url == ("postgresql://test-injected/database")

@@ -13,6 +13,7 @@ dependencies = [
     "pydantic-settings==2.15.0",
     "sqlalchemy[asyncio]==2.1.4",
     "uvicorn==0.54.0",
+    "vercel-queue==0.11.0",
 ]
 
 [dependency-groups]
@@ -47,3 +48,14 @@ select = ["E", "F", "I", "B", "UP", "ASYNC"]
 [tool.mypy]
 strict = true
 files = ["src", "tests", "migrations", "tools"]
+
+[tool.vercel]
+entrypoint = "src.workbench.api:app"
+
+[[tool.vercel.subscribers]]
+entrypoint = "src.workbench.workers.queue:process_analysis"
+topics = ["feedback-analysis"]
+
+[[tool.vercel.subscribers]]
+entrypoint = "src.workbench.workers.queue:reconcile"
+topics = ["feedback-maintenance"]

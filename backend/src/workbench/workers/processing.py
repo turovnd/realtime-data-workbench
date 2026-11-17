@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncEngine
 from workbench.infrastructure.deterministic import generate_demo
 from workbench.logic.enrichment import Generate, enrich
 from workbench.logic.errors import TerminalProviderError
-from workbench.repositories.jobs import claim_job, finish_job
+from workbench.repositories.jobs import claim_job, finish_job, retry_delay
 from workbench.repositories.usage import reserve_live_call
 
 logger = logging.getLogger("workbench.worker")
@@ -21,8 +21,9 @@ async def process_one(
     timeout_seconds: float = 10,
     generators: Mapping[str, Generate] | None = None,
     live_budget: int | None = 0,
+    job_id: str | None = None,
 ) -> bool:
-    claim = await claim_job(engine, lease_seconds)
+    claim = await claim_job(engine, lease_seconds, job_id=job_id)
     if claim is None:
         return False
     try:
@@ -56,3 +57,24 @@ async def process_one(
             retryable=False,
         )
     return True
+
+
+async def process_job(
+    engine: AsyncEngine,
+    job_id: str,
+    *,
+    lease_seconds: int = 30,
+    timeout_seconds: float = 10,
+    generators: Mapping[str, Generate] | None = None,
+    live_budget: int | None = 0,
+) -> int | None:
+    """Process exactly one queued ID, then tell its delivery whether to retry."""
+    await process_one(
+        engine,
+        job_id=job_id,
+        lease_seconds=lease_seconds,
+        timeout_seconds=timeout_seconds,
+        generators=generators,
+        live_budget=live_budget,
+    )
+    return await retry_delay(engine, job_id)

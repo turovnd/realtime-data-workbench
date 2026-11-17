@@ -1,5 +1,7 @@
 # Operations and deployment
 
+The UI project now belongs to the owner's B2Data Pro team. The [Vercel deployment guide](vercel.md) describes the Services, Queues and Neon migration candidate. The topology below remains the published application until the release ledger records a verified cutover.
+
 ## Current topology
 
 | Surface              | Destination                                                                                    |

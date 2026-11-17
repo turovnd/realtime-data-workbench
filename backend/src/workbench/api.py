@@ -10,16 +10,22 @@ from fastapi.staticfiles import StaticFiles
 from sqlalchemy.ext.asyncio import AsyncEngine
 from starlette.responses import HTMLResponse
 
-from workbench.dependencies import get_database, get_settings
+from workbench.dependencies import get_database, get_dispatcher, get_settings
 from workbench.infrastructure.database import create_engine
 from workbench.infrastructure.http import install_http
+from workbench.infrastructure.queue import JobDispatcher, build_dispatcher
 from workbench.routers import activity, analysis, auth, backfills, feedback, health
 from workbench.settings import Settings
 
 
-def create_app(engine: AsyncEngine | None = None, settings: Settings | None = None) -> FastAPI:
+def create_app(
+    engine: AsyncEngine | None = None,
+    settings: Settings | None = None,
+    dispatcher: JobDispatcher | None = None,
+) -> FastAPI:
     config = settings or Settings()
     database = engine or create_engine(config.database_url)
+    jobs = dispatcher or build_dispatcher(database, config)
 
     @asynccontextmanager
     async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
@@ -66,6 +72,7 @@ def create_app(engine: AsyncEngine | None = None, settings: Settings | None = No
     )
     app.dependency_overrides[get_database] = lambda: database
     app.dependency_overrides[get_settings] = lambda: config
+    app.dependency_overrides[get_dispatcher] = lambda: jobs
     install_http(app, config)
     for router in (
         auth.router,

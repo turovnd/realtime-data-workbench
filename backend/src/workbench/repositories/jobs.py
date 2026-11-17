@@ -2,9 +2,10 @@
 
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
+from math import ceil
 from uuid import uuid4
 
-from sqlalchemy import and_, case, func, or_, select, update
+from sqlalchemy import and_, case, func, or_, select, true, update
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession
 
 from workbench.infrastructure.database import session_scope
@@ -81,30 +82,34 @@ async def enqueue(
     )
 
 
-async def claim_job(engine: AsyncEngine, lease_seconds: int = 30) -> Claim | None:
+async def expire_exhausted(session: AsyncSession, now: datetime) -> None:
+    workspaces = set(
+        await session.scalars(
+            update(AnalysisJob)
+            .where(
+                AnalysisJob.status == "leased",
+                AnalysisJob.lease_until <= now,
+                AnalysisJob.attempts >= MAX_ATTEMPTS,
+            )
+            .values(status="failed", error="Lease expired after three attempts", lease_until=None)
+            .returning(AnalysisJob.workspace_id)
+        )
+    )
+    if workspaces:
+        await session.execute(
+            update(Workspace)
+            .where(Workspace.id.in_(workspaces))
+            .values(cursor=Workspace.cursor + 1)
+        )
+
+
+async def claim_job(
+    engine: AsyncEngine, lease_seconds: int = 30, *, job_id: str | None = None
+) -> Claim | None:
     async with session_scope(engine) as session:
         await lock_workspace(session)
         now = datetime.now(UTC)
-        exhausted_workspaces = set(
-            await session.scalars(
-                update(AnalysisJob)
-                .where(
-                    AnalysisJob.status == "leased",
-                    AnalysisJob.lease_until <= now,
-                    AnalysisJob.attempts >= MAX_ATTEMPTS,
-                )
-                .values(
-                    status="failed", error="Lease expired after three attempts", lease_until=None
-                )
-                .returning(AnalysisJob.workspace_id)
-            )
-        )
-        if exhausted_workspaces:
-            await session.execute(
-                update(Workspace)
-                .where(Workspace.id.in_(exhausted_workspaces))
-                .values(cursor=Workspace.cursor + 1)
-            )
+        await expire_exhausted(session, now)
         active = await session.scalar(
             select(func.count())
             .select_from(AnalysisJob)
@@ -117,6 +122,7 @@ async def claim_job(engine: AsyncEngine, lease_seconds: int = 30) -> Claim | Non
                 select(AnalysisJob, Feedback.text)
                 .join(Feedback, Feedback.id == AnalysisJob.record_id)
                 .where(
+                    AnalysisJob.id == job_id if job_id is not None else true(),
                     AnalysisJob.attempts < MAX_ATTEMPTS,
                     or_(
                         and_(AnalysisJob.status == "queued", AnalysisJob.available_at <= now),
@@ -152,6 +158,57 @@ async def claim_job(engine: AsyncEngine, lease_seconds: int = 30) -> Claim | Non
             provider=job.provider,
             run=job.run,
         )
+
+
+async def retry_delay(engine: AsyncEngine, job_id: str) -> int | None:
+    """Queue acknowledgement follows durable state, not delivery count."""
+    async with session_scope(engine) as session:
+        job = await session.get(AnalysisJob, job_id)
+        if job is None or job.status not in {"queued", "leased"}:
+            return None
+        due_at = job.lease_until if job.status == "leased" else job.available_at
+        seconds = (due_at - datetime.now(UTC)).total_seconds() if due_at else 0
+        return min(60, max(5, ceil(seconds)))
+
+
+async def pending_job_ids(
+    engine: AsyncEngine,
+    *,
+    workspace_id: str | None = None,
+    record_ids: list[str] | None = None,
+    identities: list[str] | None = None,
+    batch_id: str | None = None,
+    job_ids: list[str] | None = None,
+    after: str | None = None,
+    limit: int = 100,
+    due_only: bool = False,
+) -> list[str]:
+    """Read a bounded page of committed work; publishing never owns its lifecycle."""
+    now = datetime.now(UTC)
+    query = select(AnalysisJob.id).where(AnalysisJob.status.in_(["queued", "leased"]))
+    if workspace_id is not None:
+        query = query.where(AnalysisJob.workspace_id == workspace_id)
+    if record_ids is not None:
+        query = query.where(AnalysisJob.record_id.in_(record_ids))
+    if identities is not None:
+        query = query.join(Feedback, Feedback.id == AnalysisJob.record_id).where(
+            Feedback.identity.in_(identities)
+        )
+    if batch_id is not None:
+        query = query.where(AnalysisJob.batch_id == batch_id)
+    if job_ids is not None:
+        query = query.where(AnalysisJob.id.in_(job_ids))
+    if after is not None:
+        query = query.where(AnalysisJob.id > after)
+    if due_only:
+        query = query.where(
+            or_(
+                and_(AnalysisJob.status == "queued", AnalysisJob.available_at <= now),
+                and_(AnalysisJob.status == "leased", AnalysisJob.lease_until <= now),
+            )
+        )
+    async with session_scope(engine) as session:
+        return list(await session.scalars(query.order_by(AnalysisJob.id).limit(min(limit, 100))))
 
 
 async def finish_job(

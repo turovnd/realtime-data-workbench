@@ -44,14 +44,16 @@ The production build embeds the complete list of public assets into the service 
 | `routers`        | HTTP input, authentication dependencies and response composition.                                             |
 | `logic`          | Application rules and transaction coordination for feedback, analysis and pagination.                         |
 | `repositories`   | Concrete model queries and persistence operations; ordinary typed functions, no generic repository framework. |
-| `infrastructure` | Engine/session lifecycle, signed token codec and concrete provider transport.                                 |
-| `workers`        | Provider composition, job execution and shutdown/maintenance loop.                                            |
+| `infrastructure` | Engine/session lifecycle, signed token codec, provider transport and queue publication.                       |
+| `workers`        | Shared job execution, local polling loop and private Vercel queue subscribers.                                |
 | `migrations`     | Frozen Alembic schema revisions and explicitly validated adoption.                                            |
 | `tests`          | Units, HTTP, PostgreSQL, migrations and worker regressions.                                                   |
 
 `session_scope(engine)` creates an `AsyncSession` and transaction for one operation. Successful exits commit; failures roll back; closing a session releases its resources. ORM entities remain readable after commit. Concurrent operations never share a session. Repositories return typed model objects or explicit response schemas instead of passing generic SQL row dictionaries between layers. Set-based updates remain where an atomic counter, lease, cancellation or bounded cleanup requires them.
 
 Ingestion saves immutable feedback and its job in one transaction. Worker claims use expiring leases and a fence; provider calls happen outside transactions. Completion checks the lease and fence before accepting a result. Explicit analysis retains earlier runs. Backfill freezes its selected membership. These guarantees are tested against real PostgreSQL; no exactly-once external-call or billing guarantee is claimed.
+
+The Vercel migration candidate replaces continuous hosted polling with post-commit queue publication. Private subscribers invoke the same job execution boundary. PostgreSQL remains the pending-work ledger; scheduled recovery repairs missed publications and expired leases. The local Docker worker remains available. See [Vercel deployment](vercel.md) for delivery semantics, idle-cost assumptions and the cutover checklist.
 
 ## Pagination
 

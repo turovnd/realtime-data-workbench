@@ -1,15 +1,25 @@
 from typing import Literal
 
-from pydantic import Field, SecretStr, field_validator
+from pydantic import AliasChoices, Field, SecretStr, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
-    model_config = SettingsConfigDict(env_prefix="WORKBENCH_", env_file=".env", extra="ignore")
+    model_config = SettingsConfigDict(
+        env_prefix="WORKBENCH_", env_file=".env", extra="ignore", populate_by_name=True
+    )
     database_url: str = "postgresql+asyncpg://workbench:workbench@127.0.0.1:15433/workbench"
+    migration_database_url: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices(
+            "WORKBENCH_MIGRATION_DATABASE_URL", "WORKBENCH_DATABASE_URL_UNPOOLED"
+        ),
+    )
     allowed_origins: list[str] = ["http://localhost:5174", "http://127.0.0.1:5174"]
     lease_seconds: int = 30
     provider_timeout_seconds: float = 10
+    queue_enabled: bool = False
+    queue_region: str = "iad1"
 
     provider_mode: Literal["deterministic", "openrouter", "deepseek"] = "deterministic"
     openrouter_model: str = "openai/gpt-4.1-mini"

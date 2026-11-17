@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Request
 
-from workbench.dependencies import Database, Person, Token
+from workbench.dependencies import Database, Dispatcher, Person, Token
 from workbench.logic.auth import create_demo, login, register
 from workbench.repositories.rate_limits import limit_auth
 from workbench.repositories.sessions import logout
@@ -32,10 +32,15 @@ async def admission(request: Request, database: Database, email: str | None = No
     responses=errors(403, 409, 413, 429),
 )
 async def demo(
-    request: Request, database: Database, _body: EmptyRequest | None = None
+    request: Request,
+    database: Database,
+    dispatcher: Dispatcher,
+    _body: EmptyRequest | None = None,
 ) -> SessionResult:
     await admission(request, database)
-    return await create_demo(database)
+    result = await create_demo(database)
+    await dispatcher.notify(result.workspace_id)
+    return result
 
 
 @router.post(

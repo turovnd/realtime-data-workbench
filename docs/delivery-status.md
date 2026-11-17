@@ -2,13 +2,21 @@
 
 The agreed Feedback Desk MVP is implemented and published: feedback review, real AI analysis, preserved run history and isolated workspaces. Source verification and the local real-AI flow passed. The UI and backend are deployed, but hosted real-AI acceptance is blocked by an OpenRouter edge-policy rejection from the server. This is not a completed public AI demonstration.
 
-## Direct DeepSeek integration
+## Vercel migration
+
+The existing UI project has moved to the owner's B2Data Pro team. Its project identity, production domain and Git repository connection were preserved; the public UI still uses the existing Docker API until cutover. A separate preview Function in `iad1` reached OpenRouter's unauthenticated model catalog with HTTP 200. This establishes network reachability from that Function, not a successful authenticated AI analysis.
+
+Neon `feedback-desk` was created on Free in `iad1` and connected to the project with the `WORKBENCH` variable prefix and a required preview-branch action. No paid database tier or always-running Daemon was provisioned. Source now includes event-driven Python queue subscribers, bounded recovery and managed-PostgreSQL connection support; see [Vercel deployment](vercel.md).
+
+The migration candidate passed 255 backend tests on disposable PostgreSQL and 58 frontend unit tests, plus formatting, lint, type checks, the frontend build and generated-client verification. Direct and pooled Neon connections passed with certificate and hostname verification; explicit Alembic migration reached `0002` and the metadata check passed on PostgreSQL 18.7. The new production database contains no application rows yet. Hosted subscriber discovery, actual preview database isolation, data migration and authenticated public AI still require deployment verification. No completed backend cutover is claimed.
+
+## Optional direct DeepSeek adapter
 
 The current source adds direct DeepSeek (`deepseek-flash`) behind the existing generation boundary. It uses JSON-object mode, disabled thinking, a ten-second total deadline and the same strict domain and exact-source validation. The UI identifies DeepSeek results and preserves historical OpenRouter provenance. Provider selection cannot silently reroute an existing job or replace a failed AI call with a sample. Shared transactional admission retains previous provider counts.
 
 Verification of this change: 200 backend tests passed against disposable PostgreSQL; Ruff, formatting and mypy passed. The frontend passed 58 unit tests, eight targeted controlled browser scenarios, two desktop/mobile preview checks, type checks, lint, formatting and build. OpenAPI still describes 16 paths and the generated client is reproducible. Independent review's total-deadline concern was fixed and tested against a response that keeps sending chunks.
 
-A probe from the actual server reached DeepSeek's authentication boundary (HTTP 401 rather than the OpenRouter edge-policy 403). A DeepSeek key has not yet been supplied, so no authenticated DeepSeek generation, live quality evaluation, public provider switch or deployment of this candidate is claimed. The source is prepared for the requested switch; the published identities below remain the existing OpenRouter deployment until a real server-side check succeeds. Existing OpenRouter evaluation reports do not establish DeepSeek quality.
+A probe from the actual server reached DeepSeek's authentication boundary (HTTP 401 rather than the OpenRouter edge-policy 403). No authenticated DeepSeek generation or quality evaluation is claimed. The selected hosting migration retains OpenRouter; the optional direct adapter does not change existing jobs or select itself as a fallback. Existing OpenRouter evaluation reports do not establish DeepSeek quality.
 
 ## Published application verification
 

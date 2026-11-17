@@ -5,11 +5,11 @@ from logging.config import fileConfig
 
 from alembic import context
 from alembic.script import ScriptDirectory
-from sqlalchemy import inspect, pool, text
+from sqlalchemy import inspect, text
 from sqlalchemy.engine import Connection
-from sqlalchemy.ext.asyncio import create_async_engine
 
 from migrations.adoption import adopt_unversioned
+from workbench.infrastructure.database import connection_options, create_engine
 from workbench.models import Base
 from workbench.settings import Settings
 
@@ -47,7 +47,8 @@ def run_migrations(connection: Connection) -> None:
 
 
 async def run_async_migrations() -> None:
-    engine = create_async_engine(Settings().database_url, poolclass=pool.NullPool)
+    settings = Settings()
+    engine = create_engine(settings.migration_database_url or settings.database_url, pooled=False)
     try:
         async with engine.begin() as connection:
             await connection.run_sync(run_migrations)
@@ -57,8 +58,10 @@ async def run_async_migrations() -> None:
 
 if context.is_offline_mode():
     # Adoption must inspect the real schema; SQL generation is only for known revisions.
+    settings = Settings()
+    url, _ = connection_options(settings.migration_database_url or settings.database_url)
     context.configure(
-        url=Settings().database_url,
+        url=url,
         target_metadata=Base.metadata,
         literal_binds=True,
         dialect_opts={"paramstyle": "named"},

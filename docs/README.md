@@ -13,6 +13,7 @@ Feedback Desk is a first MVP for feedback review and AI analysis. These document
 | [AI evaluation](ai-evaluation.md)     | Fixed cases, real outputs, prompt decisions and known limitations. |
 | [Testing](testing.md)                 | Frontend/backend checks and evidence boundaries.                   |
 | [Operations](operations.md)           | Hosting, release constraints, rollback and backups.                |
+| [Vercel deployment](vercel.md)        | Services, private queue processing, Neon isolation and idle cost.  |
 | [Limits](limits.md)                   | Enforced resource bounds and unsupported guarantees.               |
 | [Delivery status](delivery-status.md) | Current local verification and publication status.                 |
 | [MVP plan](planning/README.md)        | Product epics, stories and implementation tasks.                   |

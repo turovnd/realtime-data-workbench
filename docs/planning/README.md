@@ -5,6 +5,7 @@ Feedback Desk helps a reviewer collect feedback, understand the original message
 ## Status
 
 - **implemented**: the stated capability exists with relevant verification; this does not imply owner acceptance of the whole product.
+- **in-progress**: implementation or required hosted verification is still being completed.
 
 ## MVP scope
 
@@ -21,7 +22,7 @@ Problems, Roadmap and Team are outside the agreed MVP. They are not pending deli
 | Epic                                                      | Status      | Outcome                                                                    |
 | --------------------------------------------------------- | ----------- | -------------------------------------------------------------------------- |
 | [FD-E01: Review customer feedback](epics/FD-E01.md)       | implemented | Find, open and understand feedback.                                        |
-| [FD-E02: Process and reprocess reliably](epics/FD-E02.md) | implemented | Turn messages into results while retaining recoverable processing history. |
+| [FD-E02: Process and reprocess reliably](epics/FD-E02.md) | in-progress | Turn messages into results while retaining recoverable processing history. |
 
 ## Stories
 
@@ -29,7 +30,7 @@ Problems, Roadmap and Team are outside the agreed MVP. They are not pending deli
 | ----------------------------------------------------------------- | ------------------------- | ----------- |
 | [FD-S01: Open a workspace and browse feedback](stories/FD-S01.md) | [FD-E01](epics/FD-E01.md) | implemented |
 | [FD-S02: Understand an individual message](stories/FD-S02.md)     | [FD-E01](epics/FD-E01.md) | implemented |
-| [FD-S03: Add feedback and inspect processing](stories/FD-S03.md)  | [FD-E02](epics/FD-E02.md) | implemented |
+| [FD-S03: Add feedback and inspect processing](stories/FD-S03.md)  | [FD-E02](epics/FD-E02.md) | in-progress |
 | [FD-S04: Reprocess a fixed selection](stories/FD-S04.md)          | [FD-E02](epics/FD-E02.md) | implemented |
 
 ## Tasks
@@ -42,6 +43,7 @@ Problems, Roadmap and Team are outside the agreed MVP. They are not pending deli
 | [FD-T04: Durable enrichment foundation](tasks/FD-T04.md)                    | [FD-S03](stories/FD-S03.md) | implemented |
 | [FD-T05: Add feedback through the generated API](tasks/FD-T05.md)           | [FD-S03](stories/FD-S03.md) | implemented |
 | [FD-T06: Reanalyze selected feedback and recover failures](tasks/FD-T06.md) | [FD-S04](stories/FD-S04.md) | implemented |
+| [FD-T07: Complete the public real-AI demonstration](tasks/FD-T07.md)        | [FD-S03](stories/FD-S03.md) | in-progress |
 
 ## Implementation and review
 
@@ -52,4 +54,4 @@ Problems, Roadmap and Team are outside the agreed MVP. They are not pending deli
 | Feedback submission and AI analysis       | Generated API client, durable jobs, explicit live-provider integration and repeated analysis | Provider contracts, persisted worker results and separate live-model evaluation. |
 | Activity                                  | Automatic, manual and grouped runs; exact historical results; cursor pagination              | Cursor scope, worker recovery and exact run results.                             |
 
-The agreed MVP tasks are implemented. The delivery includes a guided real-AI scenario and a problem-first project explanation. Published source and runtime evidence are recorded separately from owner acceptance. See the delivery ledger for the checked revision and runtime. New product capabilities require a separate scope decision.
+The product flow is implemented, but public real-AI acceptance still requires the hosting migration in FD-T07. The delivery includes a guided real-AI scenario and a problem-first project explanation. Published source and runtime evidence are recorded separately from owner acceptance. See the delivery ledger for the checked revision and runtime. New product capabilities require a separate scope decision.

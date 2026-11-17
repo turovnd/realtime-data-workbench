@@ -5,15 +5,15 @@
   "type": "module",
   "packageManager": "pnpm@11.20.0",
   "engines": {
-    "node": ">=24"
+    "node": "24.x"
   },
   "scripts": {
     "dev": "pnpm --filter realtime-data-workbench-ui dev",
     "build": "pnpm --filter realtime-data-workbench-ui build",
     "typecheck": "pnpm --filter realtime-data-workbench-ui typecheck:app && tsc -p tsconfig.tests.json",
     "lint": "eslint frontend *.ts tools/*.mjs --max-warnings 0",
-    "format": "prettier --write frontend package.json pnpm-workspace.yaml *.ts *.js tsconfig.tests.json tools/*.mjs",
-    "format:check": "prettier --check frontend package.json pnpm-workspace.yaml *.ts *.js tsconfig.tests.json tools/*.mjs",
+    "format": "prettier --write frontend package.json vercel.json pnpm-workspace.yaml *.ts *.js tsconfig.tests.json tools/*.mjs",
+    "format:check": "prettier --check frontend package.json vercel.json pnpm-workspace.yaml *.ts *.js tsconfig.tests.json tools/*.mjs",
     "test": "vitest run",
     "test:e2e": "playwright test --project=chromium --project=mobile",
     "test:connected": "PLAYWRIGHT_CONNECTED=1 playwright test --project=connected",

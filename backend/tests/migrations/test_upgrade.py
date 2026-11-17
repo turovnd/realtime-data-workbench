@@ -1,3 +1,4 @@
+import asyncio
 import json
 import os
 from collections.abc import AsyncIterator
@@ -309,3 +310,15 @@ async def test_legacy_only_downgrade_preserves_rows(migration_database: AsyncEng
         await downgrade(migration_database, "base")
     assert await current_revision(migration_database) == "0001"
     assert await stored_rows(migration_database) == before
+
+
+async def test_migration_command_uses_the_direct_url_instead_of_runtime_pool(
+    database: AsyncEngine, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # The regular fixture has already prepared only the disposable test database.
+    # An unreachable runtime URL proves the online Alembic path uses its own URL.
+    direct_url = database.url.set(drivername="postgresql").render_as_string(hide_password=False)
+    monkeypatch.setenv("WORKBENCH_DATABASE_URL", "postgresql://unreachable.invalid/runtime")
+    monkeypatch.setenv("WORKBENCH_MIGRATION_DATABASE_URL", direct_url)
+    await asyncio.to_thread(command.upgrade, migration_config(), "head")
+    assert await current_revision(database) == "0002"

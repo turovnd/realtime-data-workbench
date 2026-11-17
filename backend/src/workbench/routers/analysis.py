@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException, Response
 
-from workbench.dependencies import AppSettings, Database, Workspace
+from workbench.dependencies import AppSettings, Database, Dispatcher, Workspace
 from workbench.logic.analysis import start_analysis
 from workbench.routers.responses import errors
 from workbench.schemas.analysis import AnalysisInput
@@ -37,6 +37,7 @@ async def analyze(
     database: Database,
     workspace_id: Workspace,
     settings: AppSettings,
+    dispatcher: Dispatcher,
 ) -> RecordView:
     if not settings.live_calls_enabled:
         raise HTTPException(
@@ -47,4 +48,5 @@ async def analyze(
         database, workspace_id, record_id, request, settings.provider_id
     )
     response.status_code = 202 if inserted else 200
+    await dispatcher.notify(workspace_id, record_ids=[record.id])
     return record

@@ -2,7 +2,7 @@ from typing import Annotated, Literal
 
 from fastapi import APIRouter, Query, Response
 
-from workbench.dependencies import AppSettings, Database, Workspace
+from workbench.dependencies import AppSettings, Database, Dispatcher, Workspace
 from workbench.logic.feed import feed_page
 from workbench.logic.feedback import create_feedback, get_feedback
 from workbench.logic.ingestion import ingest
@@ -105,14 +105,20 @@ async def status(database: Database, workspace_id: Workspace, settings: AppSetti
     responses=errors(401, 403, 409, 413),
 )
 async def simulate(
-    request: SimulationInput, database: Database, workspace_id: Workspace, settings: AppSettings
+    request: SimulationInput,
+    database: Database,
+    workspace_id: Workspace,
+    settings: AppSettings,
+    dispatcher: Dispatcher,
 ) -> SimulationCreated:
+    inputs = synthetic_inputs(request.request_id, request.count)
     inserted = await ingest(
         database,
-        synthetic_inputs(request.request_id, request.count),
+        inputs,
         workspace_id,
         settings.provider_id,
     )
+    await dispatcher.notify(workspace_id, identities=[item.identity for item in inputs])
     return SimulationCreated(inserted=inserted)
 
 
@@ -158,7 +164,9 @@ async def create(
     database: Database,
     workspace_id: Workspace,
     settings: AppSettings,
+    dispatcher: Dispatcher,
 ) -> RecordView:
     record, inserted = await create_feedback(database, workspace_id, request, settings.provider_id)
     response.status_code = 201 if inserted else 200
+    await dispatcher.notify(workspace_id, record_ids=[record.id])
     return record
