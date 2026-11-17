@@ -1,56 +1,38 @@
-# First MVP plan
+# MVP plan
 
-Feedback Desk helps a reviewer collect feedback, understand the original message and its AI analysis, and follow each processing run. The agreed MVP covers feedback and AI analysis. The review flow includes an editable demonstration message, real AI analysis, source verification and a saved run in Activity. Technical verification and the deployed revision are recorded separately from product scope.
+Help a product reviewer turn customer feedback into a short, verifiable takeaway: what happened, why it matters and which words support it.
 
-## Status
+The plan separates intended outcomes from implementation evidence. Epics and stories define the work; each task records its parent story, dependencies, acceptance criteria and evidence.
 
-- **implemented**: the stated capability exists with relevant verification; this does not imply owner acceptance of the whole product.
+## Scope
 
-## MVP scope
+- Enter a private demo workspace or sign in to a personal account.
+- Add feedback, browse and filter the inbox, and load more with cursor pagination.
+- Compare the original message with an AI summary, classification and exact quotes.
+- Analyze a message again or process a fixed selection, with visible progress and recovery.
+- Inspect saved runs and their results in Activity.
 
-- Add feedback, browse and filter the inbox, and load more records with cursor pagination.
-- Open the original message and its AI summary, classification and exact supporting quotes.
-- Run analysis again for one message or a fixed selection, with visible progress, errors and preserved results.
-- Inspect analysis runs and their results in Activity.
-- Sign in to an isolated workspace; authentication remains the foundation for access to feedback.
+Problem grouping, roadmap management and team administration are outside this MVP.
 
-Problems, Roadmap and Team are outside the agreed MVP. They are not pending delivery tasks, and this plan does not promise a later release. The [delivery ledger](../delivery-status.md) separates source verification, the local runtime and the published application.
+## Epics and stories
 
-## Epics
-
-| Epic                                                      | Status      | Outcome                                                                    |
-| --------------------------------------------------------- | ----------- | -------------------------------------------------------------------------- |
-| [FD-E01: Review customer feedback](epics/FD-E01.md)       | implemented | Find, open and understand feedback.                                        |
-| [FD-E02: Process and reprocess reliably](epics/FD-E02.md) | implemented | Turn messages into results while retaining recoverable processing history. |
-
-## Stories
-
-| Story                                                             | Parent epic               | Status      |
-| ----------------------------------------------------------------- | ------------------------- | ----------- |
-| [FD-S01: Open a workspace and browse feedback](stories/FD-S01.md) | [FD-E01](epics/FD-E01.md) | implemented |
-| [FD-S02: Understand an individual message](stories/FD-S02.md)     | [FD-E01](epics/FD-E01.md) | implemented |
-| [FD-S03: Add feedback and inspect processing](stories/FD-S03.md)  | [FD-E02](epics/FD-E02.md) | implemented |
-| [FD-S04: Reprocess a fixed selection](stories/FD-S04.md)          | [FD-E02](epics/FD-E02.md) | implemented |
+| Epic                                                      | User story                                                        | Outcome                                                    |
+| --------------------------------------------------------- | ----------------------------------------------------------------- | ---------------------------------------------------------- |
+| [FD-E01: Review customer feedback](epics/FD-E01.md)       | [FD-S01: Open a workspace and browse feedback](stories/FD-S01.md) | Find relevant feedback without losing the current view.    |
+| FD-E01                                                    | [FD-S02: Understand an individual message](stories/FD-S02.md)     | Understand the customer’s problem and verify the takeaway. |
+| [FD-E02: Process and reprocess reliably](epics/FD-E02.md) | [FD-S03: Add feedback and inspect processing](stories/FD-S03.md)  | Submit a message and follow it to a real AI result.        |
+| FD-E02                                                    | [FD-S04: Reprocess a fixed selection](stories/FD-S04.md)          | Run analysis again while preserving earlier results.       |
 
 ## Tasks
 
-| Task                                                                        | Parent story                | Status      |
-| --------------------------------------------------------------------------- | --------------------------- | ----------- |
-| [FD-T01: Workspace and session foundation](tasks/FD-T01.md)                 | [FD-S01](stories/FD-S01.md) | implemented |
-| [FD-T02: Deliver the routed review interface](tasks/FD-T02.md)              | [FD-S01](stories/FD-S01.md) | implemented |
-| [FD-T03: Open a record with its current evidence](tasks/FD-T03.md)          | [FD-S02](stories/FD-S02.md) | implemented |
-| [FD-T04: Durable enrichment foundation](tasks/FD-T04.md)                    | [FD-S03](stories/FD-S03.md) | implemented |
-| [FD-T05: Add feedback through the generated API](tasks/FD-T05.md)           | [FD-S03](stories/FD-S03.md) | implemented |
-| [FD-T06: Reanalyze selected feedback and recover failures](tasks/FD-T06.md) | [FD-S04](stories/FD-S04.md) | implemented |
-| [FD-T07: Complete the public real-AI demonstration](tasks/FD-T07.md)        | [FD-S03](stories/FD-S03.md) | implemented |
+| Task                                                        | Is task of story            | Depends on     |
+| ----------------------------------------------------------- | --------------------------- | -------------- |
+| [FD-T01: Workspace and session foundation](tasks/FD-T01.md) | [FD-S01](stories/FD-S01.md) | —              |
+| [FD-T02: Routed review interface](tasks/FD-T02.md)          | [FD-S01](stories/FD-S01.md) | FD-T01         |
+| [FD-T03: Record and supporting evidence](tasks/FD-T03.md)   | [FD-S02](stories/FD-S02.md) | FD-T02         |
+| [FD-T04: Durable analysis processing](tasks/FD-T04.md)      | [FD-S03](stories/FD-S03.md) | —              |
+| [FD-T05: Feedback submission](tasks/FD-T05.md)              | [FD-S03](stories/FD-S03.md) | FD-T02, FD-T04 |
+| [FD-T06: Reanalysis and recovery](tasks/FD-T06.md)          | [FD-S04](stories/FD-S04.md) | FD-T04         |
+| [FD-T07: Public real-AI demonstration](tasks/FD-T07.md)     | [FD-S03](stories/FD-S03.md) | FD-T04, FD-T05 |
 
-## Implementation and review
-
-| Capability                                | Exists in code                                                                               | Verification and review                                                          |
-| ----------------------------------------- | -------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------- |
-| Personal accounts and isolated workspaces | Registration, login, session ownership and protected routes                                  | Session isolation is covered by API and browser checks.                          |
-| Inbox and feedback details                | Filters, cursor pagination, source message, latest analysis and evidence                     | Guided example, direct detail routes and browser journeys.                       |
-| Feedback submission and AI analysis       | Generated API client, durable jobs, explicit live-provider integration and repeated analysis | Provider contracts, persisted worker results and separate live-model evaluation. |
-| Activity                                  | Automatic, manual and grouped runs; exact historical results; cursor pagination              | Cursor scope, worker recovery and exact run results.                             |
-
-The product flow and FD-T07 hosting transfer are implemented. The public demonstration completed real AI analysis and preserved its result in Activity. The owner has not yet accepted the final interface; browser recovery, the observed platform challenge and the automatic production schedule run are recorded in the delivery ledger. That ledger identifies the checked source and runtime without treating technical checks as owner acceptance. New product capabilities require a separate scope decision.
+Implementation status and supporting code/tests live in each task’s **Evidence and status** section. The [testing guide](../testing.md) explains how to verify the MVP.

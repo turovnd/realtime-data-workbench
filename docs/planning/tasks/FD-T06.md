@@ -30,6 +30,4 @@ Real PostgreSQL analysis admission/replay/concurrency and backfill/recovery test
 
 ## Evidence and status
 
-Repeated analysis, historical Activity and the shared cursor codec/view lifecycle are implemented. PostgreSQL admission, concurrency, pagination and recovery checks passed, as did browser Activity and analysis journeys. Connected worker checks used the explicit deterministic provider; intercepted AI controls and earlier live-provider calls are recorded separately in the delivery ledger.
-
-See [delivery status](../../delivery-status.md) for actual verification and release scope.
+Implemented in analysis/backfill logic, shared cursor handling and Activity pages. Tests cover admission, concurrency, pagination, cancellation, recovery and results tied to the exact historical run.

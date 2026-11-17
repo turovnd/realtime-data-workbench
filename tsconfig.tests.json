@@ -1,9 +1,0 @@
-{
-  "extends": "./frontend/tsconfig.json",
-  "include": [
-    "frontend/tests/**/*.ts",
-    "vitest.config.ts",
-    "playwright.config.ts",
-    "frontend/src/vite-env.d.ts"
-  ]
-}

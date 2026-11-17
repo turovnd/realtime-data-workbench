@@ -17,13 +17,6 @@ test("the browser preview identifies samples and requires a connected API for AI
   await expect(
     page.getByText("Connect the API to run AI analysis.", { exact: true })
   ).toBeVisible();
-  await page.goto("/feedback/feedback-21");
-  await expect(
-    page.getByText("Sample analysis unavailable", { exact: true })
-  ).toBeVisible();
-  await expect(
-    page.getByText("AI analysis failed", { exact: true })
-  ).not.toBeVisible();
   const activity = page.getByRole("link", { name: "Activity", exact: true });
   if (!(await activity.isVisible()))
     await page

@@ -11,12 +11,13 @@ from sqlalchemy import text
 from sqlalchemy.exc import DBAPIError
 from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
 
-from workbench.db import migration_config
-from workbench.infrastructure.deterministic import generate_demo
-from workbench.logic.analysis import start_analysis
-from workbench.repositories.inspection import snapshot
-from workbench.schemas.analysis import AnalysisInput
-from workbench.workers.processing import process_one
+from common.db import migration_config
+from common.infrastructure.database import run_transaction
+from common.infrastructure.deterministic import generate_demo
+from common.logic.analysis import start_analysis
+from common.repositories.inspection import snapshot
+from common.schemas.analysis import AnalysisInput
+from modules.worker.processing import process_one
 
 pytestmark = pytest.mark.integration
 
@@ -197,9 +198,10 @@ async def test_legacy_history_survives_upgrade_and_next_run(
         ) == ["Legacy result", "Legacy result"]
     await upgrade(migration_database)
     assert await stored_rows(migration_database) == after
-    prior = (await snapshot(migration_database)).records[0]
-    pending, inserted = await start_analysis(
+    prior = (await run_transaction(migration_database, snapshot)).records[0]
+    pending, inserted = await run_transaction(
         migration_database,
+        start_analysis,
         "test",
         "record",
         AnalysisInput(identity="post-migration"),
@@ -211,12 +213,12 @@ async def test_legacy_history_survives_upgrade_and_next_run(
     assert await process_one(
         migration_database, generators={"openrouter/test": generate_demo}, live_budget=15
     )
-    assert len((await snapshot(migration_database)).records[0].outputs) == 3
+    assert len((await run_transaction(migration_database, snapshot)).records[0].outputs) == 3
     await assert_immutable(migration_database)
     with pytest.raises(RuntimeError, match="Cannot downgrade"):
         await downgrade(migration_database, "0001")
     assert await current_revision(migration_database) == "0002"
-    assert len((await snapshot(migration_database)).records[0].outputs) == 3
+    assert len((await run_transaction(migration_database, snapshot)).records[0].outputs) == 3
 
 
 @pytest.mark.parametrize("standalone_indexes", [False, True])

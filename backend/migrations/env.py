@@ -8,10 +8,10 @@ from alembic.script import ScriptDirectory
 from sqlalchemy import inspect, text
 from sqlalchemy.engine import Connection
 
+from common.infrastructure.database import connection_options, create_engine
+from common.models import Base
+from common.settings import Settings
 from migrations.adoption import adopt_unversioned
-from workbench.infrastructure.database import connection_options, create_engine
-from workbench.models import Base
-from workbench.settings import Settings
 
 config = context.config
 if config.config_file_name is not None:

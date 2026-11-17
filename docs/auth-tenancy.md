@@ -22,4 +22,4 @@ Offline snapshots are explicit read-only copies of loaded synthetic records. Cac
 
 Email identity is unverified. There is no email delivery, password reset, OAuth, organization membership, roles or tenant administration in this slice. Application scoping and real-database isolation tests are implemented; independent security certification and production tenancy assurances are not claimed. Use synthetic data only.
 
-See [API](api.md), [limits](limits.md) and [testing](testing.md).
+See [API](api.md), [limits](architecture.md) and [testing](testing.md).

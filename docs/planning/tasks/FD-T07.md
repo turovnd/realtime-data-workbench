@@ -12,16 +12,16 @@ Parent: [FD-S03](../stories/FD-S03.md). Dependencies: [FD-T04](FD-T04.md), [FD-T
 
 ## Scope
 
-Move the API and analysis execution to the existing Vercel project with Neon Free so a public reviewer can complete the real-AI journey. Preserve existing data and unrelated server applications.
+Host the UI, API and analysis execution so a public reviewer can complete the real-AI journey without local setup.
 
 ## Acceptance
 
 - A public submission produces a real OpenRouter result, exact source quotes and the same saved run in Activity.
 - The Vite frontend and FastAPI backend share one deployment origin; Swagger UI remains available.
-- Database migration is explicit. Existing records, sessions and provider counters are preserved and verified before cutover.
+- Database migrations are explicit and preserve existing records, sessions and provider counters.
 - Queue redelivery, publication failure and expired leases preserve bounded, recoverable processing. No continuously running hosted worker is required.
 - Preview databases are isolated, credentials remain server-side, and the existing Git connection publishes the reviewed code.
-- README, deployment guidance and the release ledger describe the actual running revision and remaining limits.
+- README and deployment guidance explain the product, setup and engineering limits.
 
 ## Tests
 
@@ -29,8 +29,4 @@ Real PostgreSQL queue/recovery regressions; Vercel build and subscriber discover
 
 ## Evidence and status
 
-The public UI, API and private Queue subscribers run in B2Data Pro with Neon Free. All eleven source table fingerprints and the provider counter matched after transfer; unrelated server workloads and proxy configuration were unchanged. The old application writers remain stopped.
-
-A public submission completed one real OpenRouter attempt, saved three exact source quotes and appeared in Activity after reload. Cursor pagination reached 25 of 25 runs. Preview database isolation and a manual recovery-schedule invocation were verified. The production recovery subscriber ran automatically at 10:00:44 UTC on 17 November 2026 and reported no due work to republish.
-
-The capability is implemented. Owner interface acceptance and the observed platform challenge remain explicit in [delivery status](../../delivery-status.md).
+Implemented with Vercel Services, private Queue subscribers and Neon PostgreSQL. Queue integration tests cover redelivery and publication recovery. The public flow exposes provider provenance and saved Activity results; the verification procedure is in [testing](../../testing.md).

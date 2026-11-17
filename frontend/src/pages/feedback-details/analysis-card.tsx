@@ -45,9 +45,9 @@ export const AnalysisCard = ({ analysis }: Props) => {
       <CardHeader>
         <CardTitle>Analysis</CardTitle>
         <CardDescription>
-          {ai
-            ? "Check the summary and quotes against the original message."
-            : "Run AI analysis to get a fresh summary of this message."}
+          {sample
+            ? "Prepared example. Run AI to analyze this message yourself."
+            : "The main takeaway, backed by the customer’s words."}
         </CardDescription>
       </CardHeader>
       <CardContent className="flex flex-col gap-6">
@@ -141,7 +141,10 @@ export const AnalysisCard = ({ analysis }: Props) => {
                 }
               </Badge>
             </div>
-            <p className="text-sm leading-relaxed">{output.summary}</p>
+            <div className="flex flex-col gap-2">
+              <h2 className="text-sm font-medium">Key takeaway</h2>
+              <p className="text-sm leading-relaxed">{output.summary}</p>
+            </div>
             <div className="flex flex-col gap-3">
               <h2 className="text-sm font-medium">Supporting quotes</h2>
               {output.evidence.map(quote => (

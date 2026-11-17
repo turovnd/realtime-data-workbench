@@ -88,9 +88,19 @@ describe("snapshot and version contracts", () => {
     ).toBe(true);
   });
   it("selective retry preserves the original feedback", async () => {
-    const adapter = createDemoAdapter();
-    const before = await adapter.snapshot();
-    const failed = before.records.find(row => row.jobs[0].status === "failed")!;
+    const before = await createDemoAdapter().snapshot();
+    const failed = before.records[0];
+    failed.jobs[0].status = "failed";
+    failed.jobs[0].error = "Simulated invalid provider output.";
+    failed.outputs = [];
+    const adapter = createDemoAdapter({
+      storage: {
+        getItem: () => JSON.stringify({ ...before, identities: [] }),
+        setItem: () => {},
+        removeItem: () => {},
+      },
+    });
+
     await adapter.retry(failed.jobs[0].id);
     const result = (await adapter.snapshot()).records.find(
       row => row.id === failed.id

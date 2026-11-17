@@ -4,8 +4,6 @@ The demonstration needs to preserve the distinction between a concrete failure, 
 
 The fixed [four synthetic cases](../backend/evaluation/cases.json) were used to develop and check the prompt with OpenRouter / `openai/gpt-4.1-mini`. They are a regression sample, not a held-out accuracy benchmark. The evaluation sends the actual source text through the production prompt, transport and validator.
 
-These saved reports evaluate OpenRouter only. They do not establish the quality or availability of the direct DeepSeek adapter. A provider change requires a separate bounded real-model report and a browser-to-worker persistence check; intercepted transport tests are not substitutes for either.
-
 ## Recorded runs
 
 | Report                                                         | Declared-label and output checks | What it revealed                                                                                                |
@@ -29,4 +27,14 @@ The following review was performed with AI assistance by comparing the saved out
 
 The prompt defines intent precedence and topic boundaries explicitly. It treats a workaround’s time cost as effort, not an invented delay, and asks the model to preserve uncertainty. There are no case-specific output substitutions or keyword-based repairs after generation.
 
-For the bounded command and its scope, see [testing](testing.md#small-real-model-evaluation). Browser/API/worker persistence is verified separately in the [release ledger](delivery-status.md).
+For the bounded command and its scope, see [testing](testing.md#real-ai). Use the [browser verification procedure](testing.md#real-ai) to check persistence through the API and worker.
+
+## Run a bounded evaluation
+
+With the OpenRouter key and live settings configured for the backend:
+
+```sh
+uv run --directory backend python tools/evaluate_ai.py --live --output /tmp/feedback-evaluation.json
+```
+
+The default corpus contains four synthetic messages. The runner permits at most six cases, makes one request per case with no retries, and caps each response at 800 tokens. This is a separate paid check; it is not part of the automated test suite.

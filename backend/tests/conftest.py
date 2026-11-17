@@ -6,8 +6,8 @@ import pytest_asyncio
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncEngine
 
-from workbench.db import upgrade_database
-from workbench.infrastructure.database import create_engine
+from common.db import upgrade_database
+from common.infrastructure.database import create_engine
 
 
 @pytest_asyncio.fixture

@@ -27,6 +27,4 @@ API isolation/validation tests and browser direct-link, back-navigation and evid
 
 ## Evidence and status
 
-The direct route and API present the original message and current result; Activity preserves access to earlier results. API isolation, consistent ORM reads and connected browser journeys passed. The product behavior is covered by the linked acceptance criteria.
-
-See [delivery status](../../delivery-status.md) for actual verification and release scope.
+Implemented in `frontend/src/pages/feedback-details` and the feedback read API. Tests cover workspace-scoped access, sample/AI provenance, exact quotes and navigation to historical results.

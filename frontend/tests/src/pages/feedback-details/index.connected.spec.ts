@@ -137,6 +137,6 @@ test("a record outside the loaded cursor page opens directly and survives reload
   await expect(
     page.getByRole("textbox", { name: "Search feedback" })
   ).toHaveValue("invoice");
-  await expect(count(page, 2, 2)).toBeVisible();
+  await expect(count(page, 4, 4)).toBeVisible();
   await logout(page);
 });

@@ -5,7 +5,6 @@ import { enterDemo } from "../../../helpers/preview";
 
 for (const [provider, provenance] of [
   ["openrouter/ui-test-model", "AI · ui-test-model · OpenRouter"],
-  ["deepseek/deepseek-flash", "AI · deepseek-flash · DeepSeek"],
 ]) {
   test(`${provider} submission follows its automatic AI job through result, reload and Activity without a duplicate request`, async ({
     page,

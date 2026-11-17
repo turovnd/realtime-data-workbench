@@ -10,7 +10,6 @@ import {
 describe("analysis provider provenance", () => {
   it.each([
     ["openrouter/openai/gpt-4.1-mini", "AI · openai/gpt-4.1-mini · OpenRouter"],
-    ["deepseek/deepseek-flash", "AI · deepseek-flash · DeepSeek"],
   ])("identifies %s without losing model or provider", (provider, label) => {
     expect(isAiProvider(provider)).toBe(true);
     expect(isSampleProvider(provider)).toBe(false);
@@ -31,11 +30,11 @@ describe("analysis provider provenance", () => {
     undefined,
     "",
     " ",
-    "deepseek",
-    "deepseekx",
-    "deepseek/",
-    "deepseek/ ",
-    "deepseek//model",
+    "unknown",
+    "unknownx",
+    "unknown/",
+    "unknown/ ",
+    "unknown//model",
     "unknown/model",
     "deterministic-rules/other",
   ])("does not classify unknown metadata %s as AI or a sample", provider => {
@@ -49,7 +48,7 @@ describe("analysis provider provenance", () => {
   it("applies the same distinction to completed results", () => {
     const output: Output = {
       config: "v1",
-      provider: "deepseek/deepseek-flash",
+      provider: "openrouter/openai/gpt-4.1-mini",
       topic: "reliability",
       intent: "issue",
       summary: "The export fails.",

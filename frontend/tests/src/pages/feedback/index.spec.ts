@@ -25,8 +25,8 @@ test("manual cursor paging has no duplicate rows and changing filters resets the
   await expect(loadMore).not.toBeVisible();
   await page.getByRole("textbox", { name: "Search feedback" }).fill("invoice");
   await expect(page).toHaveURL(/q=invoice/);
-  await expectCount(page, 2, 2);
-  await expect(feedbackLinks(page)).toHaveCount(2);
+  await expectCount(page, 4, 4);
+  await expect(feedbackLinks(page)).toHaveCount(4);
   await page
     .getByRole("textbox", { name: "Search feedback" })
     .fill("no-results-for-this-search");

@@ -2,17 +2,21 @@
 id: FD-S04
 type: story
 is_story_of: FD-E02
-status: implemented
 ---
 
 # FD-S04: Reprocess a fixed selection
 
 Parent: [FD-E02](../epics/FD-E02.md).
 
-A reviewer can request a new version without losing the original or completed output.
+As a reviewer, I want to analyze feedback again or process selected messages, so I can obtain a new result without losing earlier work.
 
-## Tasks and acceptance
+## Acceptance
 
-- [FD-T06: Reanalyze selected feedback and recover failures](../tasks/FD-T06.md)
+- A deliberate reanalysis creates a new run; retrying the same request does not duplicate it.
+- A group processes the selected records, even if the inbox changes afterward.
+- Progress, cancellation and retry preserve completed results.
+- Activity opens the result from the selected run, not an unrelated newer result.
 
-Acceptance requires the linked task outcomes and relevant user journey to pass. Technical checks and the published runtime are recorded separately in the release ledger.
+## Tasks
+
+- [FD-T06: Reanalysis and recovery](../tasks/FD-T06.md)

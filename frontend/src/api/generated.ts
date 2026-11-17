@@ -13,11 +13,6 @@
 /** ActivityPage */
 export interface ActivityPage {
   /**
-   * Has Older
-   * Older stored activity exists beyond the latest 6000-item window
-   */
-  has_older: boolean;
-  /**
    * Items
    * @maxItems 50
    */
@@ -36,8 +31,6 @@ export interface ActivityPage {
    * Rehydrate the first page of this same frozen view
    */
   refresh_cursor: string;
-  /** Revision */
-  revision: number;
   /**
    * Total
    * Items in this frozen read window
@@ -45,6 +38,13 @@ export interface ActivityPage {
    * @max 6000
    */
   total: number;
+  /**
+   * Has Older
+   * Older stored activity exists beyond the latest 6000-item window
+   */
+  has_older: boolean;
+  /** Revision */
+  revision: number;
 }
 
 /** AnalysisInput */
@@ -70,44 +70,44 @@ export interface BackfillCreated {
 /** BackfillInput */
 export interface BackfillInput {
   /**
-   * Config
-   * @default "v2"
-   */
-  config?: "v1" | "v2";
-  /**
    * Record Ids
    * @maxItems 100
    * @minItems 1
    */
   record_ids: string[];
+  /**
+   * Config
+   * @default "v2"
+   */
+  config?: "v1" | "v2";
 }
 
 /** BatchActivity */
 export interface BatchActivity {
-  batch: BatchView;
-  /** Id */
-  id: string;
   /**
    * Kind
    * @default "batch"
    */
   kind?: "batch";
+  /** Id */
+  id: string;
+  batch: BatchView;
 }
 
 /** BatchItem */
 export interface BatchItem {
-  /** Channel */
-  channel: string;
-  /** Original target-configuration job; later individual analyses are excluded */
-  job: JobView | null;
-  /** Completed output of that exact job run, or null if none was stored */
-  output: OutputView | null;
   /** Record Id */
   record_id: string;
   /** Sequence */
   sequence: number;
   /** Text */
   text: string;
+  /** Channel */
+  channel: string;
+  /** Original target-configuration job; later individual analyses are excluded */
+  job: JobView | null;
+  /** Completed output of that exact job run, or null if none was stored */
+  output: OutputView | null;
 }
 
 /** BatchPage */
@@ -127,18 +127,18 @@ export interface BatchPage {
 
 /** BatchView */
 export interface BatchView {
-  /** Cancelled */
-  cancelled: boolean;
-  /** Completed */
-  completed: number;
-  /** Config */
-  config: "v1" | "v2";
-  /** Failed */
-  failed: number;
   /** Id */
   id: string;
+  /** Config */
+  config: "v1" | "v2";
   /** Selected */
   selected: number;
+  /** Completed */
+  completed: number;
+  /** Failed */
+  failed: number;
+  /** Cancelled */
+  cancelled: boolean;
   /** Watermark */
   watermark: number;
 }
@@ -178,18 +178,25 @@ export interface ErrorResponse {
 
 /** FeedPage */
 export interface FeedPage {
+  /** Workspace Id */
+  workspace_id: string;
+  /** Records */
+  records: RecordView[];
   /**
    * Next Cursor
    * Opaque continuation token, or null when this frozen view is exhausted
    */
   next_cursor: string | null;
-  /** Records */
-  records: RecordView[];
   /**
    * Refresh Cursor
    * Refresh the first page of this same frozen view without changing membership
    */
   refresh_cursor: string;
+  /**
+   * Watermark
+   * Highest source sequence when this view opened
+   */
+  watermark: number;
   /** Revision */
   revision: number;
   /**
@@ -197,51 +204,42 @@ export interface FeedPage {
    * Number of records matching the frozen view
    */
   total: number;
-  /**
-   * Watermark
-   * Highest source sequence when this view opened
-   */
-  watermark: number;
-  /** Workspace Id */
-  workspace_id: string;
 }
 
 /** FeedStatus */
 export interface FeedStatus {
-  /** Batches */
-  batches: BatchView[];
+  /** Workspace Id */
+  workspace_id: string;
+  /** Revision */
+  revision: number;
+  /** Latest Sequence */
+  latest_sequence: number;
+  /** Received */
+  received: number;
   /** Enriched */
   enriched: number;
   /** Failed */
   failed: number;
-  /** Latest Sequence */
-  latest_sequence: number;
+  /** Batches */
+  batches: BatchView[];
   /** Provider */
   provider: string;
-  /** Received */
-  received: number;
-  /** Revision */
-  revision: number;
-  /** Workspace Id */
-  workspace_id: string;
 }
 
 /** FeedbackActivity */
 export interface FeedbackActivity {
-  feedback: BatchItem;
-  /** Id */
-  id: string;
   /**
    * Kind
    * @default "feedback"
    */
   kind?: "feedback";
+  /** Id */
+  id: string;
+  feedback: BatchItem;
 }
 
 /** FeedbackInput */
 export interface FeedbackInput {
-  /** Channel */
-  channel: "Support" | "In-app" | "Community";
   /**
    * Identity
    * @minLength 1
@@ -254,6 +252,8 @@ export interface FeedbackInput {
    * @maxLength 4000
    */
   text: string;
+  /** Channel */
+  channel: "Support" | "In-app" | "Community";
 }
 
 /** HTTPValidationError */
@@ -265,49 +265,49 @@ export interface HTTPValidationError {
 /** HealthResponse */
 export interface HealthResponse {
   /**
-   * Provider
-   * Configured provider identifier, not a secret
-   */
-  provider: string;
-  /**
    * Status
    * @default "ok"
    */
   status?: "ok";
+  /**
+   * Provider
+   * Configured provider identifier, not a secret
+   */
+  provider: string;
 }
 
 /** Identity */
 export interface Identity {
+  /** Workspace Id */
+  workspace_id: string;
   /** Email */
   email: string | null;
   /** Kind */
   kind: "account" | "demo";
-  /** Workspace Id */
-  workspace_id: string;
 }
 
 /** JobView */
 export interface JobView {
-  /** Attempts */
-  attempts: number;
-  /** Config */
-  config: "v1" | "v2";
-  /** Error */
-  error: string | null;
   /** Id */
   id: string;
-  /** Origin */
-  origin: "live" | "backfill" | "analysis";
-  /** Provider */
-  provider: string;
+  /** Config */
+  config: "v1" | "v2";
   /**
    * Run
    * Monotonic analysis revision within this feedback
    * @min 1
    */
   run: number;
+  /** Provider */
+  provider: string;
   /** Status */
   status: "queued" | "leased" | "succeeded" | "failed" | "cancelled";
+  /** Attempts */
+  attempts: number;
+  /** Error */
+  error: string | null;
+  /** Origin */
+  origin: "live" | "backfill" | "analysis";
 }
 
 /** OkResponse */
@@ -321,42 +321,46 @@ export interface OkResponse {
 
 /** OutputView */
 export interface OutputView {
-  /** Config */
-  config: "v1" | "v2";
-  /** Created At */
-  created_at: string;
-  /**
-   * Evidence
-   * @maxItems 3
-   * @minItems 1
-   */
-  evidence: string[];
+  /** Topic */
+  topic: "reliability" | "usability" | "billing" | "performance" | "other";
   /** Intent */
   intent: "issue" | "request" | "praise" | "unclear";
-  /** Provider */
-  provider: string;
-  /**
-   * Run
-   * The completed job revision; previous outputs are retained
-   * @min 1
-   */
-  run: number;
   /**
    * Summary
    * @minLength 1
    * @maxLength 240
    */
   summary: string;
-  /** Topic */
-  topic: "reliability" | "usability" | "billing" | "performance" | "other";
+  /**
+   * Evidence
+   * @maxItems 3
+   * @minItems 1
+   */
+  evidence: string[];
+  /** Config */
+  config: "v1" | "v2";
+  /**
+   * Run
+   * The completed job revision; previous outputs are retained
+   * @min 1
+   */
+  run: number;
+  /** Provider */
+  provider: string;
+  /** Created At */
+  created_at: string;
 }
 
 /** RecordView */
 export interface RecordView {
-  /** Channel */
-  channel: string;
   /** Id */
   id: string;
+  /** Sequence */
+  sequence: number;
+  /** Text */
+  text: string;
+  /** Channel */
+  channel: string;
   /** Ingested At */
   ingested_at: string;
   /**
@@ -371,14 +375,12 @@ export interface RecordView {
    * @maxItems 10
    */
   outputs: OutputView[];
-  /** Sequence */
-  sequence: number;
-  /** Text */
-  text: string;
 }
 
 /** SessionResult */
 export interface SessionResult {
+  /** Workspace Id */
+  workspace_id: string;
   /** Email */
   email: string | null;
   /** Kind */
@@ -388,8 +390,6 @@ export interface SessionResult {
    * Opaque bearer token, valid for 24 hours; stored hashed by the server
    */
   token: string;
-  /** Workspace Id */
-  workspace_id: string;
 }
 
 /** SimulationCreated */
@@ -406,104 +406,48 @@ export interface SimulationCreated {
 /** SimulationInput */
 export interface SimulationInput {
   /**
+   * Request Id
+   * @pattern ^[a-zA-Z0-9-]{1,64}$
+   */
+  request_id: string;
+  /**
    * Count
    * @min 1
    * @max 12
    * @default 12
    */
   count?: number;
-  /**
-   * Request Id
-   * @pattern ^[a-zA-Z0-9-]{1,64}$
-   */
-  request_id: string;
 }
 
 /** ValidationError */
 export interface ValidationError {
-  /** Context */
-  ctx?: object;
-  /** Input */
-  input?: any;
   /** Location */
   loc: (string | number)[];
   /** Message */
   msg: string;
   /** Error Type */
   type: string;
+  /** Input */
+  input?: any;
+  /** Context */
+  ctx?: object;
 }
-
-export interface ListActivityParams {
-  /**
-   * Limit
-   * Maximum items per page; default ten
-   * @min 1
-   * @max 50
-   * @default 10
-   */
-  limit?: number;
-  /**
-   * Cursor
-   * Opaque next_cursor or refresh_cursor from this activity view
-   */
-  cursor?: string | null;
-}
-
-export type ListActivityData = ActivityPage;
 
 /**  Body */
 export type CreateDemoSessionPayload = EmptyRequest | null;
 
 export type CreateDemoSessionData = SessionResult;
 
+export type RegisterAccountData = SessionResult;
+
 export type LoginAccountData = SessionResult;
+
+export type GetCurrentIdentityData = Identity;
 
 /**  Body */
 export type LogoutSessionPayload = EmptyRequest | null;
 
 export type LogoutSessionData = OkResponse;
-
-export type GetCurrentIdentityData = Identity;
-
-export type RegisterAccountData = SessionResult;
-
-export type CreateBackfillData = BackfillCreated;
-
-export interface GetBackfillParams {
-  /**
-   * Limit
-   * Maximum items per page; default ten
-   * @min 1
-   * @max 50
-   * @default 10
-   */
-  limit?: number;
-  /**
-   * Cursor
-   * Opaque next_cursor for this workspace/batch; omit to read its first page
-   */
-  cursor?: string | null;
-  /**
-   * Batch Id
-   * Persisted fixed-selection backfill identifier
-   */
-  batchId: string;
-}
-
-export type GetBackfillData = BatchPage;
-
-/**  Body */
-export type CancelBackfillPayload = EmptyRequest | null;
-
-export interface CancelBackfillParams {
-  /**
-   * Batch Id
-   * Backfill id returned by createBackfill
-   */
-  batchId: string;
-}
-
-export type CancelBackfillData = OkResponse;
 
 export interface ListFeedbackParams {
   /**
@@ -545,6 +489,10 @@ export type ListFeedbackData = FeedPage;
 
 export type CreateFeedbackData = RecordView;
 
+export type GetFeedbackStatusData = FeedStatus;
+
+export type CreateSimulationData = SimulationCreated;
+
 export interface GetFeedbackParams {
   /** Record Id */
   recordId: string;
@@ -559,6 +507,62 @@ export interface AnalyzeFeedbackParams {
 
 export type AnalyzeFeedbackData = RecordView;
 
+export interface ListActivityParams {
+  /**
+   * Limit
+   * Maximum items per page; default ten
+   * @min 1
+   * @max 50
+   * @default 10
+   */
+  limit?: number;
+  /**
+   * Cursor
+   * Opaque next_cursor or refresh_cursor from this activity view
+   */
+  cursor?: string | null;
+}
+
+export type ListActivityData = ActivityPage;
+
+export interface GetBackfillParams {
+  /**
+   * Limit
+   * Maximum items per page; default ten
+   * @min 1
+   * @max 50
+   * @default 10
+   */
+  limit?: number;
+  /**
+   * Cursor
+   * Opaque next_cursor for this workspace/batch; omit to read its first page
+   */
+  cursor?: string | null;
+  /**
+   * Batch Id
+   * Persisted fixed-selection backfill identifier
+   */
+  batchId: string;
+}
+
+export type GetBackfillData = BatchPage;
+
+export type CreateBackfillData = BackfillCreated;
+
+/**  Body */
+export type CancelBackfillPayload = EmptyRequest | null;
+
+export interface CancelBackfillParams {
+  /**
+   * Batch Id
+   * Backfill id returned by createBackfill
+   */
+  batchId: string;
+}
+
+export type CancelBackfillData = OkResponse;
+
 /**  Body */
 export type RetryEnrichmentPayload = EmptyRequest | null;
 
@@ -571,10 +575,6 @@ export interface RetryEnrichmentParams {
 }
 
 export type RetryEnrichmentData = OkResponse;
-
-export type CreateSimulationData = SimulationCreated;
-
-export type GetFeedbackStatusData = FeedStatus;
 
 export type GetHealthData = HealthResponse;
 
@@ -846,25 +846,6 @@ export class Api<
 > extends HttpClient<SecurityDataType> {
   api = {
     /**
-     * @description Includes one item per automatic or individual analysis job, and one per bulk backfill (without duplicate child-job items). Each job shows only its exact stored output revision. A new view orders IDs by current scheduling availability and an ID tie-breaker; this is not a creation timestamp. Membership and order freeze for ten minutes; status/results can refresh through refresh_cursor. Signed workspace-scoped cursors page persisted positions with SQL LIMIT. At most twenty views are retained per workspace, shared with feedback/backfill views. Each read window contains at most the latest 6000 IDs; has_older reports older stored activity without blocking new work or deleting history. This flag stays fixed throughout the view. Omit cursor to include new work. This endpoint never enqueues work or calls a provider.
-     *
-     * @tags Activity
-     * @name ListActivity
-     * @summary Read automatic, individual and bulk analysis activity
-     * @request GET:/api/activity
-     * @secure
-     */
-    listActivity: (query: ListActivityParams, params: RequestParams = {}) =>
-      this.request<ListActivityData, ErrorResponse | HTTPValidationError>({
-        path: `/api/activity`,
-        method: "GET",
-        query: query,
-        secure: true,
-        format: "json",
-        ...params,
-      }),
-
-    /**
      * @description Creates a temporary workspace and a revocable 24-hour bearer token. Seeds 24 synthetic records with deterministic jobs, even when live provider tests are configured. Limited to 20 auth requests per IP per 15 minutes. Send an empty JSON object.
      *
      * @tags Authentication
@@ -878,6 +859,24 @@ export class Api<
     ) =>
       this.request<CreateDemoSessionData, ErrorResponse | HTTPValidationError>({
         path: `/api/auth/demo`,
+        method: "POST",
+        body: data,
+        type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Creates an empty personal workspace. Passwords are hashed with Argon2id; they are never returned. Email is normalized to lowercase. No email verification or password reset is implemented. Limited by both IP and email.
+     *
+     * @tags Authentication
+     * @name RegisterAccount
+     * @summary Create an independent personal account
+     * @request POST:/api/auth/register
+     */
+    registerAccount: (data: Credentials, params: RequestParams = {}) =>
+      this.request<RegisterAccountData, ErrorResponse | HTTPValidationError>({
+        path: `/api/auth/register`,
         method: "POST",
         body: data,
         type: ContentType.Json,
@@ -904,26 +903,6 @@ export class Api<
       }),
 
     /**
-     * @description Revokes this token immediately. Other account sessions remain valid. The UI separately clears its private query and offline caches. Send an empty JSON object.
-     *
-     * @tags Authentication
-     * @name LogoutSession
-     * @summary Revoke the current bearer token
-     * @request POST:/api/auth/logout
-     * @secure
-     */
-    logoutSession: (data: LogoutSessionPayload, params: RequestParams = {}) =>
-      this.request<LogoutSessionData, ErrorResponse | HTTPValidationError>({
-        path: `/api/auth/logout`,
-        method: "POST",
-        body: data,
-        secure: true,
-        type: ContentType.Json,
-        format: "json",
-        ...params,
-      }),
-
-    /**
      * @description Validates the bearer token and returns only its workspace and account/demo identity.
      *
      * @tags Authentication
@@ -942,81 +921,17 @@ export class Api<
       }),
 
     /**
-     * @description Creates an empty personal workspace. Passwords are hashed with Argon2id; they are never returned. Email is normalized to lowercase. No email verification or password reset is implemented. Limited by both IP and email.
+     * @description Revokes this token immediately. Other account sessions remain valid. The UI separately clears its private query and offline caches. Send an empty JSON object.
      *
      * @tags Authentication
-     * @name RegisterAccount
-     * @summary Create an independent personal account
-     * @request POST:/api/auth/register
-     */
-    registerAccount: (data: Credentials, params: RequestParams = {}) =>
-      this.request<RegisterAccountData, ErrorResponse | HTTPValidationError>({
-        path: `/api/auth/register`,
-        method: "POST",
-        body: data,
-        type: ContentType.Json,
-        format: "json",
-        ...params,
-      }),
-
-    /**
-     * @description Freezes up to 100 record IDs belonging to this workspace and enqueues the missing target versions atomically. Input and previous outputs stay unchanged. The unique (record, config) operation is idempotent; existing unfinished work must be retried or cancelled, not duplicated. Progress is available in /api/status.
-     *
-     * @tags Backfills and recovery
-     * @name CreateBackfill
-     * @summary Reprocess a fixed selection with another configuration
-     * @request POST:/api/backfills
+     * @name LogoutSession
+     * @summary Revoke the current bearer token
+     * @request POST:/api/auth/logout
      * @secure
      */
-    createBackfill: (data: BackfillInput, params: RequestParams = {}) =>
-      this.request<CreateBackfillData, ErrorResponse | HTTPValidationError>({
-        path: `/api/backfills`,
-        method: "POST",
-        body: data,
-        secure: true,
-        type: ContentType.Json,
-        format: "json",
-        ...params,
-      }),
-
-    /**
-     * @description Pages the persisted fixed selection in descending source sequence with SQL keyset pagination. Membership never expands with new arrivals. Each item shows its original non-analysis target-configuration job and only that job's output; later individual analyses are excluded. A selection may reuse an already completed target version. Progress and job states may refresh. Missing and foreign-workspace batches both return 404. Signed cursors are bound to this workspace and batch for ten minutes, sharing the twenty-view workspace limit with feedback views. Reading does not enqueue work or call a provider.
-     *
-     * @tags Backfills and recovery
-     * @name GetBackfill
-     * @summary Read the feedback and original results of one backfill
-     * @request GET:/api/backfills/{batch_id}
-     * @secure
-     */
-    getBackfill: (
-      { batchId, ...query }: GetBackfillParams,
-      params: RequestParams = {}
-    ) =>
-      this.request<GetBackfillData, ErrorResponse | HTTPValidationError>({
-        path: `/api/backfills/${batchId}`,
-        method: "GET",
-        query: query,
-        secure: true,
-        format: "json",
-        ...params,
-      }),
-
-    /**
-     * @description Cancels queued/claimed jobs and fences in-flight completions. Already completed versions are preserved. Only a batch in the current workspace can be cancelled. Send an empty JSON object.
-     *
-     * @tags Backfills and recovery
-     * @name CancelBackfill
-     * @summary Stop unfinished work in a backfill
-     * @request POST:/api/backfills/{batch_id}/cancel
-     * @secure
-     */
-    cancelBackfill: (
-      { batchId, ...query }: CancelBackfillParams,
-      data: CancelBackfillPayload,
-      params: RequestParams = {}
-    ) =>
-      this.request<CancelBackfillData, ErrorResponse | HTTPValidationError>({
-        path: `/api/backfills/${batchId}/cancel`,
+    logoutSession: (data: LogoutSessionPayload, params: RequestParams = {}) =>
+      this.request<LogoutSessionData, ErrorResponse | HTTPValidationError>({
+        path: `/api/auth/logout`,
         method: "POST",
         body: data,
         secure: true,
@@ -1056,6 +971,44 @@ export class Api<
     createFeedback: (data: FeedbackInput, params: RequestParams = {}) =>
       this.request<CreateFeedbackData, ErrorResponse | HTTPValidationError>({
         path: `/api/feedback`,
+        method: "POST",
+        body: data,
+        secure: true,
+        type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Returns workspace totals and at most ten backfills. latest_sequence can signal arrivals newer than the current feed watermark. The UI polls every three seconds; this endpoint does not stream events.
+     *
+     * @tags Feedback
+     * @name GetFeedbackStatus
+     * @summary Read counts, processing progress and new-arrival marker
+     * @request GET:/api/status
+     * @secure
+     */
+    getFeedbackStatus: (params: RequestParams = {}) =>
+      this.request<GetFeedbackStatusData, ErrorResponse>({
+        path: `/api/status`,
+        method: "GET",
+        secure: true,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Commits one to twelve immutable inputs and durable v1 jobs atomically. Repeating request_id is idempotent; conflicting content is rejected. Bounds: 500 records per workspace and 5,000 globally. A separate worker processes jobs; the HTTP request does not wait for enrichment.
+     *
+     * @tags Feedback
+     * @name CreateSimulation
+     * @summary Enqueue a finite batch of synthetic feedback
+     * @request POST:/api/simulations
+     * @secure
+     */
+    createSimulation: (data: SimulationInput, params: RequestParams = {}) =>
+      this.request<CreateSimulationData, ErrorResponse | HTTPValidationError>({
+        path: `/api/simulations`,
         method: "POST",
         body: data,
         secure: true,
@@ -1110,6 +1063,91 @@ export class Api<
       }),
 
     /**
+     * @description Includes one item per automatic or individual analysis job, and one per bulk backfill (without duplicate child-job items). Each job shows only its exact stored output revision. A new view orders IDs by current scheduling availability and an ID tie-breaker; this is not a creation timestamp. Membership and order freeze for ten minutes; status/results can refresh through refresh_cursor. Signed workspace-scoped cursors page persisted positions with SQL LIMIT. At most twenty views are retained per workspace, shared with feedback/backfill views. Each read window contains at most the latest 6000 IDs; has_older reports older stored activity without blocking new work or deleting history. This flag stays fixed throughout the view. Omit cursor to include new work. This endpoint never enqueues work or calls a provider.
+     *
+     * @tags Activity
+     * @name ListActivity
+     * @summary Read automatic, individual and bulk analysis activity
+     * @request GET:/api/activity
+     * @secure
+     */
+    listActivity: (query: ListActivityParams, params: RequestParams = {}) =>
+      this.request<ListActivityData, ErrorResponse | HTTPValidationError>({
+        path: `/api/activity`,
+        method: "GET",
+        query: query,
+        secure: true,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Pages the persisted fixed selection in descending source sequence with SQL keyset pagination. Membership never expands with new arrivals. Each item shows its original non-analysis target-configuration job and only that job's output; later individual analyses are excluded. A selection may reuse an already completed target version. Progress and job states may refresh. Missing and foreign-workspace batches both return 404. Signed cursors are bound to this workspace and batch for ten minutes, sharing the twenty-view workspace limit with feedback views. Reading does not enqueue work or call a provider.
+     *
+     * @tags Backfills and recovery
+     * @name GetBackfill
+     * @summary Read the feedback and original results of one backfill
+     * @request GET:/api/backfills/{batch_id}
+     * @secure
+     */
+    getBackfill: (
+      { batchId, ...query }: GetBackfillParams,
+      params: RequestParams = {}
+    ) =>
+      this.request<GetBackfillData, ErrorResponse | HTTPValidationError>({
+        path: `/api/backfills/${batchId}`,
+        method: "GET",
+        query: query,
+        secure: true,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Freezes up to 100 record IDs belonging to this workspace and enqueues the missing target versions atomically. Input and previous outputs stay unchanged. The unique (record, config) operation is idempotent; existing unfinished work must be retried or cancelled, not duplicated. Progress is available in /api/status.
+     *
+     * @tags Backfills and recovery
+     * @name CreateBackfill
+     * @summary Reprocess a fixed selection with another configuration
+     * @request POST:/api/backfills
+     * @secure
+     */
+    createBackfill: (data: BackfillInput, params: RequestParams = {}) =>
+      this.request<CreateBackfillData, ErrorResponse | HTTPValidationError>({
+        path: `/api/backfills`,
+        method: "POST",
+        body: data,
+        secure: true,
+        type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
+
+    /**
+     * @description Cancels queued/claimed jobs and fences in-flight completions. Already completed versions are preserved. Only a batch in the current workspace can be cancelled. Send an empty JSON object.
+     *
+     * @tags Backfills and recovery
+     * @name CancelBackfill
+     * @summary Stop unfinished work in a backfill
+     * @request POST:/api/backfills/{batch_id}/cancel
+     * @secure
+     */
+    cancelBackfill: (
+      { batchId, ...query }: CancelBackfillParams,
+      data: CancelBackfillPayload,
+      params: RequestParams = {}
+    ) =>
+      this.request<CancelBackfillData, ErrorResponse | HTTPValidationError>({
+        path: `/api/backfills/${batchId}/cancel`,
+        method: "POST",
+        body: data,
+        secure: true,
+        type: ContentType.Json,
+        format: "json",
+        ...params,
+      }),
+
+    /**
      * @description Only terminal jobs in this workspace with fewer than three lifetime attempts can be retried. Retry retains the original provider/configuration and does not overwrite completed output. Failed provider calls never silently switch to deterministic mode. Send an empty JSON object.
      *
      * @tags Backfills and recovery
@@ -1129,44 +1167,6 @@ export class Api<
         body: data,
         secure: true,
         type: ContentType.Json,
-        format: "json",
-        ...params,
-      }),
-
-    /**
-     * @description Commits one to twelve immutable inputs and durable v1 jobs atomically. Repeating request_id is idempotent; conflicting content is rejected. Bounds: 500 records per workspace and 5,000 globally. A separate worker processes jobs; the HTTP request does not wait for enrichment.
-     *
-     * @tags Feedback
-     * @name CreateSimulation
-     * @summary Enqueue a finite batch of synthetic feedback
-     * @request POST:/api/simulations
-     * @secure
-     */
-    createSimulation: (data: SimulationInput, params: RequestParams = {}) =>
-      this.request<CreateSimulationData, ErrorResponse | HTTPValidationError>({
-        path: `/api/simulations`,
-        method: "POST",
-        body: data,
-        secure: true,
-        type: ContentType.Json,
-        format: "json",
-        ...params,
-      }),
-
-    /**
-     * @description Returns workspace totals and at most ten backfills. latest_sequence can signal arrivals newer than the current feed watermark. The UI polls every three seconds; this endpoint does not stream events.
-     *
-     * @tags Feedback
-     * @name GetFeedbackStatus
-     * @summary Read counts, processing progress and new-arrival marker
-     * @request GET:/api/status
-     * @secure
-     */
-    getFeedbackStatus: (params: RequestParams = {}) =>
-      this.request<GetFeedbackStatusData, ErrorResponse>({
-        path: `/api/status`,
-        method: "GET",
-        secure: true,
         format: "json",
         ...params,
       }),

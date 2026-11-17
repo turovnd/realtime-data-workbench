@@ -2,7 +2,7 @@
 
 Production API origin: `https://turovnd-feedback-desk.vercel.app`; local origin: `http://127.0.0.1:8002`. Business routes include `/api` in their paths. Hosted frontend builds use `VITE_API_URL=same-origin`. For a separate local API, use its bare origin without an `/api` suffix.
 
-FastAPI exposes generated OpenAPI at `/openapi.json`. Swagger assets are served locally at `/docs`, with explicit operation tags/descriptions, strict request/response models and bearer security. [Public Swagger](https://turovnd-feedback-desk.vercel.app/docs) and [OpenAPI](https://turovnd-feedback-desk.vercel.app/openapi.json) describe the published application. The table below describes the source contract; [delivery status](delivery-status.md) identifies the published revision.
+FastAPI exposes generated OpenAPI at `/openapi.json`. Swagger assets are served locally at `/docs`, with explicit operation tags/descriptions, strict request/response models and bearer security. [Public Swagger](https://turovnd-feedback-desk.vercel.app/docs) and [OpenAPI](https://turovnd-feedback-desk.vercel.app/openapi.json) describe the published application.
 
 | Method/path                                       | Purpose                                                                  | Authentication  |
 | ------------------------------------------------- | ------------------------------------------------------------------------ | --------------- |
@@ -26,7 +26,7 @@ Use Swagger **Authorize** with a session from this API. Documentation loading mu
 
 ## Generated client and message submission
 
-`pnpm api:generate` exports the actual FastAPI schema to `openapi.json` and runs pinned `swagger-typescript-api` 13.2.18 to create `frontend/src/api/generated.ts`. It uses fetch and extracts request parameters, request bodies and response bodies. `pnpm api:check` verifies reproducible output. Session races, error mapping and Zod runtime validation remain in the application boundary; generated types are not runtime validation.
+The fetch client is generated from the running API’s OpenAPI URL with pinned `swagger-typescript-api`. Session races, error mapping and Zod validation remain at the application boundary; generated types are not runtime validation. See [client generation](#generate-the-client).
 
 Authenticated detail returns 200 or workspace-scoped 404. Submission takes strict `FeedbackInput`: a nonblank identity of 1–100 characters, nonblank text of 1–4,000 characters and channel `Support`, `In-app` or `Community`; unknown fields are rejected. It returns `RecordView`: 201 for a new identity, 200 for an identical replay and 409 for conflicting content. Authentication and validation failures remain 401 and 422. Existing workspace/global record bounds still apply.
 
@@ -64,8 +64,21 @@ A signed cursor binds workspace, filters and retained view. Invalid/tampered/mis
 
 Session failures are 401; immutable input/configuration conflicts are 409; admission limits are 429. Invalid request models use FastAPI validation errors. The generated schema and route tests own exact payload shapes. Manual submission is bounded text entry; simulation remains server-authored synthetic input. Neither implies integration with an external customer system.
 
-See [auth](auth-tenancy.md), [workflows](workflows.md) and [limits](limits.md).
+See [auth](auth-tenancy.md), [architecture](architecture.md).
 
 ## Swagger asset maintenance
 
-The API vendors `swagger-ui-dist` 5.33.1 with its upstream license, notice and SHA manifest. `python3 tools/vendor_swagger.py --version 5.33.1` reproduces the pinned assets. Run the API asset/contract tests after an intentional version update; no external CDN is required at runtime.
+The API vendors `swagger-ui-dist` 5.33.1 with its upstream license, notice and SHA manifest. `python3 backend/tools/vendor_swagger.py --version 5.33.1` reproduces the pinned assets. Run the API asset/contract tests after an intentional version update; no external CDN is required at runtime.
+
+## Generate the client
+
+The backend serves `/openapi.json`; no schema snapshot is committed at the repository root.
+
+```sh
+pnpm api:generate
+pnpm api:generate --url http://127.0.0.1:8002/openapi.json
+```
+
+The default URL is the local API; `OPENAPI_URL` can override it. The pinned generator writes `frontend/src/api/generated.ts`. Do not edit that file manually.
+
+`pnpm api:check` exports the current backend schema into a temporary directory without starting a server or connecting to a database, regenerates the client there and compares it with the checked-in client. CI therefore checks local source rather than a possibly older public deployment.

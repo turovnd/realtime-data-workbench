@@ -2,17 +2,20 @@
 id: FD-S02
 type: story
 is_story_of: FD-E01
-status: implemented
 ---
 
 # FD-S02: Understand an individual message
 
 Parent: [FD-E01](../epics/FD-E01.md).
 
-A reviewer can open a record directly and compare its source, result and evidence.
+As a reviewer, I want a concise takeaway beside the original message, so I can understand the issue and verify that the analysis is supported.
 
-## Tasks and acceptance
+## Acceptance
 
-- [FD-T03: Open a record with its current evidence](../tasks/FD-T03.md)
+- The takeaway captures the main issue or request and customer impact without copying the full message.
+- Topic, intent and exact quotes make the classification understandable.
+- Prepared examples are distinct from real AI results; a reviewer can start AI analysis and open its Activity entry.
 
-Acceptance requires the linked task outcomes and relevant user journey to pass. Technical checks and the published runtime are recorded separately in the release ledger.
+## Tasks
+
+- [FD-T03: Record and supporting evidence](../tasks/FD-T03.md)

@@ -11,16 +11,15 @@ from time import monotonic
 import httpx
 from pydantic import Field, TypeAdapter
 
-from workbench.infrastructure.deepseek import system_instructions
-from workbench.logic.enrichment import ModelClient, enrich
-from workbench.logic.errors import RetryableProviderError, TerminalProviderError
-from workbench.logic.prompts import feedback_request
-from workbench.schemas.common import Config, StrictModel, Topic
-from workbench.schemas.enrichment import Enrichment
-from workbench.schemas.feedback import MAX_FEEDBACK_LENGTH
-from workbench.schemas.providers import GenerationResult
-from workbench.settings import Settings
-from workbench.workers.providers import build_model_client
+from common.logic.enrichment import ModelClient, enrich
+from common.logic.errors import RetryableProviderError, TerminalProviderError
+from common.logic.prompts import feedback_request
+from common.schemas.common import Config, StrictModel, Topic
+from common.schemas.enrichment import Enrichment
+from common.schemas.feedback import MAX_FEEDBACK_LENGTH
+from common.schemas.providers import GenerationResult
+from common.settings import Settings
+from modules.worker.providers import build_model_client
 
 MAX_CASES = 6
 MAX_TOKENS = 800
@@ -82,7 +81,7 @@ def load_cases(path: Path) -> list[EvaluationCase]:
 async def evaluate_case(client: ModelClient, case: EvaluationCase, provider: str) -> CaseResult:
     started = monotonic()
     request = feedback_request(case.text, case.config)
-    instructions = system_instructions(request) if provider == "deepseek" else request.instructions
+    instructions = request.instructions
     result = CaseResult(
         id=case.id,
         config=case.config,

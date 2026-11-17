@@ -4,10 +4,7 @@ const sampleProviders = new Set([
   "browser-fixture/1",
 ]);
 
-const aiProviders = new Map([
-  ["openrouter", "OpenRouter"],
-  ["deepseek", "DeepSeek"],
-]);
+const aiProviders = new Map([["openrouter", "OpenRouter"]]);
 
 const identifyAiProvider = (provider: string | undefined) => {
   if (!provider) return undefined;

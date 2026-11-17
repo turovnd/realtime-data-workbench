@@ -12,7 +12,7 @@ Parent: [FD-S01](../stories/FD-S01.md). Dependencies: [FD-T01](FD-T01.md)
 
 ## Scope
 
-Reshape the first MVP around explicit routes and reusable domain components.
+Build the review interface around explicit routes and reusable domain components.
 
 ## Acceptance
 
@@ -32,6 +32,4 @@ Frontend lint, formatting, strict type checks, unit tests, build and desktop/mob
 
 ## Evidence and status
 
-Route groups, page ownership, public exports and API hooks now follow the agreed structure. Static checks, unit tests and desktop/mobile journeys passed, including lazy-route offline recovery. The guided example and actual loading/error states are part of the same browser acceptance flow.
-
-See [delivery status](../../delivery-status.md) for actual verification and release scope.
+Implemented in `frontend/src/router`, `pages`, domain components and API query hooks. Browser journeys cover direct routes, filtering, cursor pagination, selection and offline recovery.

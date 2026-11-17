@@ -28,6 +28,4 @@ Schema/client generation checks, HTTP validation/isolation tests, unit tests and
 
 ## Evidence and status
 
-The generated client is reproducible from the actual OpenAPI schema. Query and session boundaries are separated, and connected submission through API, worker and PostgreSQL passed. See the release ledger for the published source revision.
-
-See [delivery status](../../delivery-status.md) for actual verification and release scope.
+Implemented in the generated fetch client, feedback API boundary and submission dialog. `pnpm api:check` verifies generation against the current backend schema. Connected browser tests exercise submission through the API, worker and PostgreSQL.

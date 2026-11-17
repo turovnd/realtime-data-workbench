@@ -2,18 +2,21 @@
 id: FD-S01
 type: story
 is_story_of: FD-E01
-status: implemented
 ---
 
 # FD-S01: Open a workspace and browse feedback
 
 Parent: [FD-E01](../epics/FD-E01.md).
 
-A reviewer can enter an isolated workspace and browse a stable filtered feed.
+As a reviewer, I want to enter my workspace and find relevant messages, so I can start reviewing without setup or a tutorial.
 
-## Tasks and acceptance
+## Acceptance
+
+- Demo entry creates an isolated workspace with varied, clearly labelled sample results.
+- Search and filters are shareable in the URL; loading more preserves the current view.
+- Direct links, browser back, empty states and session expiry have clear behavior.
+
+## Tasks
 
 - [FD-T01: Workspace and session foundation](../tasks/FD-T01.md)
-- [FD-T02: Deliver the routed review interface](../tasks/FD-T02.md)
-
-Acceptance requires the linked task outcomes and relevant user journey to pass. Technical checks and the published runtime are recorded separately in the release ledger.
+- [FD-T02: Routed review interface](../tasks/FD-T02.md)

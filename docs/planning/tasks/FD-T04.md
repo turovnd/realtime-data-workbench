@@ -29,6 +29,4 @@ Provider/schema units and real PostgreSQL ingestion, claims, recovery, fencing a
 
 ## Evidence and status
 
-Typed ORM models, transactional sessions, Alembic migrations and separate provider transport, prompt policy and worker composition are implemented. PostgreSQL regression, adoption and provider-contract checks passed. The connected browser flow persisted worker results using the explicit deterministic test provider. Earlier live-provider results describe those specific calls; no new paid request was made for this refactor.
-
-See [delivery status](../../delivery-status.md) for actual verification and release scope.
+Implemented in `backend/modules/worker`, `backend/common/repositories`, provider infrastructure and Alembic migrations. Real PostgreSQL tests cover claims, idempotency, recovery and stale completion; provider contracts cover structured output and source validation.

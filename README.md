@@ -1,63 +1,51 @@
 # Feedback Desk
 
-Customer feedback often mixes a useful request with background details, workarounds and frustration. Reading a long message is easy; consistently capturing its main issue without losing the customer’s meaning takes more care.
+Customer messages mix problems, requests, workarounds and background details. Before a product review, someone has to read them, identify what matters and preserve enough context to avoid a misleading conclusion.
 
-Feedback Desk turns a message into a short AI summary, a topic, an intent and supporting quotes. The original stays beside the result so a reviewer can check the interpretation. Every analysis run is saved, including failures and repeated attempts.
+Feedback Desk turns a long message into a short takeaway, a topic and an intent, backed by quotes from the original. A reviewer can compare both side by side and inspect previous analyses.
 
-**[Try the demo](https://turovnd-feedback-desk.vercel.app)** · [API docs](https://turovnd-feedback-desk.vercel.app/docs) · [Architecture](docs/architecture.md) · [Verification and release](docs/delivery-status.md)
+**[Try the demo](https://turovnd-feedback-desk.vercel.app)** · [Swagger](https://turovnd-feedback-desk.vercel.app/docs) · [Architecture](docs/architecture.md)
 
-## Try one complete scenario
+## See the difference
 
-1. Choose **Try the demo**. No account is required; sample feedback belongs to an isolated workspace.
-2. Choose **Try an example** in the inbox. Review or edit the longer customer message about a monthly export that fails while smaller exports still work.
-3. Submit the message for analysis. Follow the actual queued and analyzing states until a result or an actionable error appears.
-4. Compare the AI summary with the original and its supporting quotes. Check that the failed monthly export, working smaller exports and customer impact have not been confused.
-5. Run **Analyze again**, then open **Activity** to inspect the saved runs and their results.
+1. Choose **Try the demo** to open your own workspace with 24 detailed customer messages.
+2. Open a message. Compare the original with its prepared sample takeaway: what happened, who is affected and what workaround they use.
+3. Choose **Analyze with AI** to analyze that message through OpenRouter, or use **Try an example** to edit and submit your own.
+4. Check the summary against the supporting quotes. **Activity** preserves the result and status of every run.
 
-Opening the demo does not call a model: seeded results are labelled as samples. Submitting a message or explicitly analyzing an existing one invokes OpenRouter. The result identifies its model. Provider failures remain visible; a failed live request never becomes a sample response.
+For example, a customer describes a failed monthly export, working weekly exports and manual merging. The useful takeaway is that **monthly exports fail, the workaround costs 30 minutes, and Monday’s finance report is at risk**. The summary is shorter; the original and quotes let the reviewer check it.
 
-## What the MVP does
+Prepared examples are labelled **Sample analysis**. Opening a demo makes no model calls. New submissions and explicit AI analysis use OpenRouter; provider failures remain visible and never become sample results.
 
-- Add feedback, filter the inbox and page through results with opaque cursors.
-- Review AI summaries, classification and exact source quotes beside the original text.
-- Analyze again or process a fixed selection without overwriting previous results.
-- Inspect progress, failures and saved results in Activity.
-- Use a temporary demo workspace or sign in to a personal, isolated workspace.
+## Scope
 
-This is a focused review tool. It does not automatically decide product priorities or manage a roadmap or team. Example messages are synthetic; there is no connected customer inbox.
+- Add and search feedback; filter by topic or processing status.
+- Browse with cursor pagination, including Activity and grouped run details.
+- Run AI analysis, follow progress and retry a failed or completed analysis without losing earlier results.
+- Use a temporary demo or an account with an isolated workspace.
+
+The MVP supports feedback review. It does not ingest a real customer inbox, decide priorities, or manage a roadmap or team.
 
 ## Engineering choices
 
-| Choice                                                        | Why                                                                                    | Tradeoff                                                                                 |
-| ------------------------------------------------------------- | -------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
-| PostgreSQL records and durable jobs, delivered through Queues | Feedback and its job commit together; repeated delivery preserves saved results.       | A thirty-minute schedule repairs missed publication after commit.                        |
-| Private Python subscribers with leases and completion fencing | Model calls run outside the HTTP request; stale workers cannot overwrite results.      | At-least-once delivery can repeat an interrupted, already-billed model call.             |
-| Structured output plus exact source quotes                    | Reject malformed results and quotes absent from the original.                          | Quotes do not prove correct interpretation; human review remains necessary.              |
-| Immutable messages and saved runs                             | A new result cannot erase the source or an earlier interpretation.                     | History grows; list and detail responses have explicit bounds.                           |
-| Polling and cursor views                                      | Ordinary HTTP supports progress updates and stable review pages.                       | Updates are periodic, and new arrivals require a refreshed list.                         |
-| Vercel Services and Neon Free                                 | One Git revision deploys UI, FastAPI and subscribers without an always-running worker. | Cold starts add latency. Resources have costs or quotas; schema changes remain explicit. |
+- **PostgreSQL owns durable work.** The message and job commit together. Queues deliver job IDs; leases and completion fences prevent stale workers from replacing saved results.
+- **Evidence is checked.** Structured output is validated, and every quote must occur in the source. That catches unsupported quotes, but interpretation still needs human review.
+- **History is retained.** Reanalysis creates a new run. Retrying an uncertain submission with the same identity does not create a duplicate run.
+- **Polling keeps the MVP simple.** Updates are periodic. Saved cursor views keep new arrivals from shifting a list while someone is reviewing it.
 
-The API and subscribers run in `iad1` beside Neon. Processing has bounded concurrency, three attempts per job and durable provider counters. Scheduled redispatch can take roughly thirty-one minutes with healthy infrastructure; this is not a completion guarantee or a throughput benchmark. See [architecture](docs/architecture.md), [deployment](docs/vercel.md) and [operational limits](docs/limits.md).
+External model calls can repeat after an interrupted attempt; exactly-once billing is not guaranteed. Missed queue publication is repaired by a scheduled scan, so this recovery path can take roughly 30 minutes. See [architecture](docs/architecture.md) and [AI evaluation](docs/ai-evaluation.md).
 
 ## Run locally
 
-Requires Node 24, pnpm 11.20.0 and Docker Compose v2. Preserve an existing `.env`; otherwise copy `.env.example` and set a unique database password.
+Requires Node 24, pnpm 11.20.0 and Docker Compose. Preserve an existing `.env`; otherwise copy `.env.example` and set a database password.
 
 ```sh
 cp -n .env.example .env
 docker compose --profile local-web up --build -d --wait
 ```
 
-Open `http://127.0.0.1:8082`. Local Docker uses a polling worker and needs no Vercel credentials. Fresh installs disable live model calls. Configure a server-side key and explicit enablement through [setup](docs/setup.md#live-analysis) to use real AI. Existing databases without Alembic require the documented [adoption procedure](docs/setup.md#existing-unversioned-database); never delete a volume to make an upgrade succeed.
+Open `http://127.0.0.1:8082`. Local live analysis is disabled until an OpenRouter key and enablement are configured; see [setup](docs/setup.md).
 
-For frontend-only work, `pnpm install --frozen-lockfile` and `pnpm dev` start the labelled browser fixture.
+`frontend/` owns the React application and its tools. Backend entrypoints are `modules/api` and `modules/worker`; `common` holds shared ORM models, schemas and logic. Alembic owns migrations. The repository root contains shared workspace, Compose and deployment configuration.
 
-## Implementation and evidence
-
-`frontend/` contains React; `backend/` contains FastAPI, typed SQLAlchemy models, Alembic and processing logic. Each has mirrored tests. The client is generated from OpenAPI. Git `main` deploys both hosted services; Alembic changes remain explicit.
-
-The published application passed 255 backend tests on disposable PostgreSQL and 62 frontend unit tests. A real OpenRouter analysis completed through the public UI, was saved in Neon and appeared with the same result in Activity. [Delivery status](docs/delivery-status.md) records the exact verification scope and remaining review items. The [AI evaluation](docs/ai-evaluation.md) is a small synthetic regression sample, not a representative accuracy benchmark.
-
-[Project documentation](docs/README.md) · [MVP epics, stories and tasks](docs/planning/README.md)
-
-Built independently with AI assistance and synthetic data. No private client code or customer data is included.
+[Documentation](docs/README.md) · [MVP plan](docs/planning/README.md) · [Tests](docs/testing.md)

@@ -1,10 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { mockAnalysis, openAnalysis } from "../../../helpers/analysis";
 
-for (const provider of [
-  "openrouter/test-provider",
-  "deepseek/deepseek-flash",
-]) {
+for (const provider of ["openrouter/test-provider"]) {
   test(`${provider} failure preserves the last result and a retry can complete a fresh run`, async ({
     page,
   }) => {

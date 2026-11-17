@@ -10,29 +10,14 @@
   "scripts": {
     "dev": "pnpm --filter realtime-data-workbench-ui dev",
     "build": "pnpm --filter realtime-data-workbench-ui build",
-    "typecheck": "pnpm --filter realtime-data-workbench-ui typecheck:app && tsc -p tsconfig.tests.json",
-    "lint": "eslint frontend *.ts tools/*.mjs --max-warnings 0",
-    "format": "prettier --write frontend package.json vercel.json pnpm-workspace.yaml *.ts *.js tsconfig.tests.json tools/*.mjs",
-    "format:check": "prettier --check frontend package.json vercel.json pnpm-workspace.yaml *.ts *.js tsconfig.tests.json tools/*.mjs",
-    "test": "vitest run",
-    "test:e2e": "playwright test --project=chromium --project=mobile",
-    "test:connected": "PLAYWRIGHT_CONNECTED=1 playwright test --project=connected",
-    "api:export": "uv run --directory backend python ../tools/export_openapi.py",
-    "api:generate": "pnpm api:export && swagger-typescript-api generate -p openapi.json -o frontend/src/api -n generated.ts --extract-request-params --extract-request-body --extract-response-body && prettier --write frontend/src/api/generated.ts openapi.json",
-    "api:check": "node tools/check_api_client.mjs"
-  },
-  "devDependencies": {
-    "@eslint/js": "10.0.1",
-    "@playwright/test": "1.64.0",
-    "@types/node": "24.19.1",
-    "eslint": "10.12.0",
-    "eslint-plugin-react-hooks": "7.1.1",
-    "eslint-plugin-react-refresh": "0.5.7",
-    "globals": "17.13.0",
-    "prettier": "3.9.9",
-    "typescript": "6.0.3",
-    "typescript-eslint": "8.71.1",
-    "vitest": "5.0.3",
-    "swagger-typescript-api": "13.2.18"
+    "typecheck": "pnpm --filter realtime-data-workbench-ui typecheck",
+    "lint": "pnpm --filter realtime-data-workbench-ui lint",
+    "format": "pnpm --filter realtime-data-workbench-ui format",
+    "format:check": "pnpm --filter realtime-data-workbench-ui format:check",
+    "test": "pnpm --filter realtime-data-workbench-ui test",
+    "test:e2e": "pnpm --filter realtime-data-workbench-ui test:e2e",
+    "test:connected": "pnpm --filter realtime-data-workbench-ui test:connected",
+    "api:generate": "pnpm --filter realtime-data-workbench-ui api:generate",
+    "api:check": "pnpm --filter realtime-data-workbench-ui api:check"
   }
 }

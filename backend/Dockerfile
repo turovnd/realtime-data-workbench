@@ -5,10 +5,11 @@ WORKDIR /app
 ENV UV_COMPILE_BYTECODE=1 UV_LINK_MODE=copy PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1
 COPY pyproject.toml uv.lock ./
 RUN uv sync --frozen --no-dev --no-install-project
-COPY src ./src
+COPY common ./common
+COPY modules ./modules
 COPY alembic.ini ./
 COPY migrations ./migrations
 RUN uv sync --frozen --no-dev && useradd --uid 10001 --create-home workbench
 USER 10001
 EXPOSE 8000
-CMD ["/app/.venv/bin/uvicorn", "workbench.api:app", "--host", "0.0.0.0", "--port", "8000", "--limit-concurrency", "50"]
+CMD ["/app/.venv/bin/uvicorn", "modules.api.app:app", "--host", "0.0.0.0", "--port", "8000", "--limit-concurrency", "50"]

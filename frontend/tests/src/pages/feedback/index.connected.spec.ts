@@ -50,7 +50,7 @@ test("real cursor pages retain their view during arrivals and filters start a ne
   queries.length = 0;
   await page.getByRole("textbox", { name: "Search feedback" }).fill("invoice");
   await expect(page).toHaveURL(/q=invoice/);
-  await expect(count(page, 3, 3)).toBeVisible();
+  await expect(count(page, 5, 5)).toBeVisible();
   expect(
     queries.some(
       query =>

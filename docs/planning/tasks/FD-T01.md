@@ -12,7 +12,7 @@ Parent: [FD-S01](../stories/FD-S01.md). Dependencies: None.
 
 ## Scope
 
-Retain personal accounts, isolated demo workspaces and private client state.
+Provide personal accounts, isolated demo workspaces and private client state.
 
 ## Acceptance
 
@@ -25,6 +25,4 @@ Auth/client unit tests and real PostgreSQL workspace/session tests.
 
 ## Evidence and status
 
-Implemented. Current auth/client units, connected logout and workspace-isolation journeys, and real PostgreSQL session tests pass locally.
-
-See [delivery status](../../delivery-status.md) for actual verification and release scope.
+Implemented in `backend/common/logic/auth.py`, auth routes and the frontend auth/session boundary. Verification covers workspace isolation, logout and stale-session responses.

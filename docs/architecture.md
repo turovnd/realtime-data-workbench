@@ -2,78 +2,68 @@
 
 ```mermaid
 flowchart LR
-  UI[React frontend] -->|same-origin HTTPS and polling| API[FastAPI]
-  API -->|commit feedback and job| DB[(Neon PostgreSQL)]
-  API -->|publish after commit| Queue[Vercel Queues]
-  Queue --> Worker[Private Python subscribers]
-  Worker -->|leased jobs and fenced results| DB
-  Worker -->|bounded request| Provider[OpenRouter]
-  Schedule[Thirty-minute schedule] -->|recovery and retention| Queue
-  Migration[Alembic command] -->|explicit schema migration| DB
+  UI[React] -->|HTTP and polling| API[FastAPI]
+  API -->|commit message and job| DB[(PostgreSQL)]
+  API -->|publish job ID after commit| Queue[Queues]
+  Queue --> Worker[Python subscriber]
+  Worker -->|claim lease and save result| DB
+  Worker -->|bounded request| AI[OpenRouter]
+  Recovery[Scheduled recovery] --> Queue
 ```
 
-Frontend and backend are independent runtime roots. API and worker compose the same typed Python package. This repository has no runtime dependency on the other portfolio application.
+Local Docker uses the same processing logic through a polling worker. Hosted processing uses private queue subscribers. PostgreSQL remains the source of truth in both environments.
 
-## Frontend
+## Repository boundaries
 
-| Path                         | Responsibility                                                                                                                |
-| ---------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
-| `src/App.tsx`                | Query client provider and router composition.                                                                                 |
-| `src/router`                 | Stable data router, typed auth/main route groups, path constants, lazy page loading and protected workspace/session boundary. |
-| `src/pages/<name>/index.tsx` | Page composition. Unique components and orchestration live beside the page.                                                   |
-| `src/components/<domain>`    | Reusable or potentially reusable components and domain UI behavior.                                                           |
-| `src/components/ui`          | Official shadcn components and named public exports.                                                                          |
-| `src/api`                    | Generated client, runtime contracts, authenticated transport, explicit browser fixtures and offline snapshots.                |
-| `src/api/feedback`           | Feedback queries and mutations, including infinite loading and analysis actions.                                              |
-| `src/hooks`                  | Shared authentication, connectivity and generic UI hooks.                                                                     |
-| `tests`                      | Tests mirroring their production owners.                                                                                      |
+- `frontend/src/pages/<page>/index.tsx`: routed pages; unique page components stay beside their page.
+- `frontend/src/components/<domain>/`: reusable components with public `index.ts` exports.
+- `frontend/src/api/`: generated client, validation and session handling. Browser-only fixtures are grouped in `api/demo/`.
+- `backend/modules/api/routers/`: HTTP parsing, dependencies and response schemas.
+- `backend/common/schemas/`: validated boundary models.
+- `backend/common/logic/`: application operations, independent of HTTP handlers.
+- `backend/common/repositories/`: typed SQLAlchemy queries and transactional persistence.
+- `backend/common/infrastructure/`: database, HTTP and queue adapters.
+- `backend/modules/worker/`: job admission, execution and completion.
+- Each runtime owns a `tests/` directory that mirrors its source structure. Alembic migrations live in `backend/migrations/`.
 
-The router uses `createBrowserRouter` and `RouterProvider`. `routes-auth.tsx` and `routes-main.tsx` describe `RouteObject[]` groups; `paths.ts` owns paths. Pages load lazily with explicit loading and error boundaries. The router is created once, not on each render.
+`modules/api` owns HTTP and Swagger; `modules/worker` owns polling and Queue entrypoints. `common` contains their shared application code. A repository function reads or writes data through the supplied session; it does not own HTTP behavior or decide product policy. Logic composes those queries through an ORM `Session` and typed `Query` objects. API and worker boundaries call `run_transaction`, which commits or rolls back one operation. SQLAlchemy’s `AsyncSession.run_sync` adapts those ORM calls to asyncpg, so database I/O yields without threading a session across requests. Concurrent operations use separate sessions.
 
-Pages are `/login`, `/register`, `/feedback`, `/feedback/:id` and `/activity`. Page implementations use `pages/<name>/index.tsx`. Auth's form and submission hook are adjacent; Activity's disclosure card is adjacent. `components/feedback` exports `Feed`, `Filter` and `Summary` without repeating the directory name in every component.
+## From feedback to analysis
 
-Public aliases have at most two segments after `@/`, for example `@/components/feedback`, `@/components/ui` or `@/api/feedback`. Public barrels use named exports; siblings use relative imports. Generated client and upstream shadcn internals retain their supported conventions. UI uses Nova / Neutral / Blue / chartBlue / Inter / Lucide with semantic tokens.
+1. Authenticate the workspace and validate the input and request identity.
+2. Save the immutable message and its job in one transaction.
+3. After commit, publish the job ID. Publication failure leaves durable pending work for retry or scheduled repair.
+4. Claim an expiring lease and reserve a provider attempt. Call OpenRouter outside the database transaction.
+5. Validate the structured result and exact source quotes, then save it only if the lease and completion fence still match.
 
-The client is generated with pinned `swagger-typescript-api` from the actual FastAPI OpenAPI document. Application code validates external responses and coordinates sessions; generated types alone do not validate runtime data. Server state uses TanStack Query, shareable filters live in the URL, and saved snapshots are bound to their workspace. A stale session cannot submit selected analysis into the next session. Browser fixtures are explicit and never replace a failed connected API.
+A repeated delivery cannot overwrite a completed result. It can repeat an external call after an uncertain failure, so storage idempotency is not an exactly-once billing guarantee. Cancellation prevents a stale completion from being accepted; it cannot undo a call already sent.
 
-The production build embeds the complete list of public assets into the service worker, including lazy page chunks. The asset-list hash changes its cache identity on a new build. Only public application resources are cached there; API responses and mutations are excluded. Explicitly saved feedback remains workspace-scoped application storage.
+OpenRouter is the only AI provider. Its adapter requests strict JSON Schema and bounded output. The worker owns retries; the HTTP transport makes one request per admitted attempt. Failed live calls never fall back to prepared samples.
 
-## Backend
+## Review and history
 
-| Path             | Responsibility                                                                                                |
-| ---------------- | ------------------------------------------------------------------------------------------------------------- |
-| `models`         | Typed SQLAlchemy declarative entities, grouped by domain, with shared `Base.metadata`.                        |
-| `schemas`        | Pydantic request, response and provider boundary contracts.                                                   |
-| `routers`        | HTTP input, authentication dependencies and response composition.                                             |
-| `logic`          | Application rules and transaction coordination for feedback, analysis and pagination.                         |
-| `repositories`   | Concrete model queries and persistence operations; ordinary typed functions, no generic repository framework. |
-| `infrastructure` | Engine/session lifecycle, signed token codec, provider transport and queue publication.                       |
-| `workers`        | Shared job execution, local polling loop and private Vercel queue subscribers.                                |
-| `migrations`     | Frozen Alembic schema revisions and explicitly validated adoption.                                            |
-| `tests`          | Units, HTTP, PostgreSQL, migrations and worker regressions.                                                   |
+Feedback details show the source beside the latest result. Reanalysis creates another run; Activity retrieves the result for that exact historical run. Grouped analysis freezes its selected messages before processing.
 
-`session_scope(engine)` creates an `AsyncSession` and transaction for one operation. Successful exits commit; failures roll back; closing a session releases its resources. ORM entities remain readable after commit. Concurrent operations never share a session. Repositories return typed model objects or explicit response schemas instead of passing generic SQL row dictionaries between layers. Set-based updates remain where an atomic counter, lease, cancellation or bounded cleanup requires them.
+Lists use opaque workspace-scoped cursors with `limit`. Saved membership prevents new arrivals from moving records between pages. Refresh explicitly starts a new view. Expired cursors can be reset without losing stored feedback.
 
-Ingestion saves immutable feedback and its job in one transaction. Worker claims use expiring leases and a fence; provider calls happen outside transactions. Completion checks the lease and fence before accepting a result. Explicit analysis retains earlier runs. Backfill freezes its selected membership. These guarantees are tested against real PostgreSQL; no exactly-once external-call or billing guarantee is claimed.
+Polling pauses after request errors while already loaded data remains visible. The reviewer can retry; an unexpected HTML response or browser security challenge offers a page reload. Offline snapshots are optional, local to the signed-in workspace and cleared on logout.
 
-Hosted processing uses post-commit queue publication. Private subscribers invoke the shared job execution boundary; PostgreSQL remains the pending-work ledger. Scheduled recovery repairs missed publications and expired leases in bounded pages. Local Docker invokes the same processing logic through a polling worker, without Vercel credentials. See [Vercel deployment](vercel.md) for delivery semantics, idle-cost assumptions and verification.
+## Demo data
 
-## Pagination
+The demo contains 24 different synthetic messages with context, customer impact and prepared takeaways. Backend fixtures live in `backend/common/fixtures/feedback.json`; the browser-only preview keeps a matching copy in `frontend/src/api/demo/samples.json`. A regression check prevents the two copies from drifting. This keeps both applications self-contained at build time.
 
-`infrastructure/pagination.py` only encodes, decodes and authenticates the opaque token. `logic/pagination.py` creates frozen views and validates workspace, scope and expiry when resuming one. Feed and run details then apply sequence bounds; Activity applies its own ordinal bounds. A valid signature does not authorize a position outside the saved view.
+Prepared results are visibly labelled. Live analysis is an explicit action and uses the same validated OpenRouter path as submitted feedback.
 
-The feed freezes membership and filters; processing status can still refresh. Activity's read model combines individual jobs and grouped analyses. It returns the exact job/result pair for each item, while record details retain a separately bounded recent history. Existing signed tokens keep their wire format.
+## Bounds and tradeoffs
 
-## AI analysis
+| Boundary         | Limit                                                       |
+| ---------------- | ----------------------------------------------------------- |
+| Input            | 4,000 characters per message                                |
+| Workspace        | 500 records; sessions expire after 24 hours                 |
+| Grouped analysis | 100 selected records                                        |
+| Processing       | Two global leases; 30-second leases; three attempts per job |
+| Provider         | 10-second deadline; 800 output tokens by default            |
+| Result           | Summary up to 240 characters; one to three exact quotes     |
+| Recovery         | Thirty-minute schedule; bounded pages and handler duration  |
 
-`logic/prompts.py` builds the analysis instructions and schema from shared domain constraints. `FeedbackGenerator` prepares the request through the small model-client contract. The explicit OpenRouter and DeepSeek adapters construct their provider-specific requests and share bounded HTTP transport and response-envelope validation. `workers/providers.py` composes only the selected live model with the worker. `logic/enrichment.py` checks the domain schema and exact source quotes before anything can be saved.
-
-OpenRouter requests strict JSON Schema. DeepSeek Chat Completions uses JSON-object mode with thinking disabled and includes the schema in the system instructions; application validation remains authoritative. The adapters do not share provider-specific routing or retention flags. Switching providers changes new jobs, never historical results or an existing job's provider identity. A queued job for an unconfigured provider fails explicitly.
-
-Retries belong to the durable worker. The transport performs one request per admitted attempt; missing live configuration fails explicitly. A live provider never falls back to deterministic generation. Model, deadline, output-token limit and cumulative call policy come from settings. A shared transactional admission lock checks total usage across providers, then increments the selected provider's durable counter. Existing OpenRouter reservations are retained when DeepSeek is selected. Logs include safe timing and usage metadata, not source text, provider bodies or credentials.
-
-## Schema and deployment
-
-Alembic is the sole schema owner. API and worker startup create connections and check readiness; they do not create tables or alter columns. Local Compose runs a migration service first; hosted migrations are an explicit release operation through a direct database connection. Existing unversioned databases require explicit, structurally validated adoption; unknown or drifted schemas fail before being stamped. ORM metadata is checked against the migrated database.
-
-Vercel Services deploys the frontend, FastAPI and private Queue subscribers from one Git revision. Runtime connections use Neon pooling with verified TLS; preview deployments use isolated database branches. Local Docker remains independent. The release ledger identifies the verified hosted revision. See [setup](setup.md), [operations](operations.md), [workflows](workflows.md) and [limits](limits.md).
+The small SQL-backed job ledger avoids adding Kafka or Redis to this MVP. It trades independent queue-state scaling for a simpler transactional boundary. This is not a throughput or high-availability claim. Schema changes are explicit Alembic operations; application startup never changes tables.

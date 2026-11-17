@@ -1,0 +1,317 @@
+[
+  {
+    "text": "I prepare the customer report every Friday. Exporting seven days of data takes a few seconds, but a full month stays on Preparing export and eventually fails. I tried Chrome and Firefox with the same result. I now merge four weekly files by hand, which takes about half an hour. The finance team needs the complete month before Monday.",
+    "channel": "Support",
+    "analysis": {
+      "topic": "performance",
+      "intent": "issue",
+      "summary": "Monthly exports fail while weekly exports work. The manual workaround costs about 30 minutes and puts Monday’s finance report at risk.",
+      "evidence": [
+        "a full month stays on Preparing export and eventually fails",
+        "merge four weekly files by hand, which takes about half an hour"
+      ]
+    }
+  },
+  {
+    "text": "Our invoice shows 18 paid seats, although we removed six contractors before the renewal date. The team page correctly shows 12 active members. I checked the invoice twice and it still includes the removed accounts. Finance will not approve payment until the seat count is corrected, so please explain which date the invoice uses.",
+    "channel": "Support",
+    "analysis": {
+      "topic": "billing",
+      "intent": "issue",
+      "summary": "The renewal invoice charges for six removed users despite showing 12 active seats. Finance is withholding payment until the count is corrected.",
+      "evidence": [
+        "invoice shows 18 paid seats",
+        "team page correctly shows 12 active members",
+        "Finance will not approve payment until the seat count is corrected"
+      ]
+    }
+  },
+  {
+    "text": "I review support requests with our product manager each morning. We use the same three filters every day, but each person has to recreate them separately. A shared saved view would let us discuss the same list without sending screenshots. Please let us share a view with a colleague while keeping private views private.",
+    "channel": "Community",
+    "analysis": {
+      "topic": "usability",
+      "intent": "request",
+      "summary": "Reviewers want to share saved filter views so colleagues can discuss the same list without rebuilding filters or exchanging screenshots.",
+      "evidence": [
+        "each person has to recreate them separately",
+        "share a view with a colleague while keeping private views private"
+      ]
+    }
+  },
+  {
+    "text": "I was halfway through writing a reply when my train lost its internet connection. When the connection returned, the page refreshed and my draft was gone. The conversation history was still there, so I could reconstruct the reply, but it took another ten minutes. Please preserve unsent drafts when the network drops.",
+    "channel": "In-app",
+    "analysis": {
+      "topic": "reliability",
+      "intent": "issue",
+      "summary": "A reconnect refresh discards unsent replies. The customer lost ten minutes rebuilding a draft and needs drafts preserved across network interruptions.",
+      "evidence": [
+        "the page refreshed and my draft was gone",
+        "it took another ten minutes",
+        "preserve unsent drafts when the network drops"
+      ]
+    }
+  },
+  {
+    "text": "Finding a customer by email is fast. Searching with the long reference copied from our order system takes around eight seconds, even when there is just one result. We do this for every phone call, and customers wait while we look them up. The slowdown started after we imported last quarter’s orders; opening a known customer still works normally.",
+    "channel": "Support",
+    "analysis": {
+      "topic": "performance",
+      "intent": "issue",
+      "summary": "Long order-reference searches take about eight seconds after a larger import, delaying phone support. Email search and opening known customers remain fast.",
+      "evidence": [
+        "Searching with the long reference copied from our order system takes around eight seconds",
+        "customers wait while we look them up"
+      ]
+    }
+  },
+  {
+    "text": "We used to open every message to decide which team should handle it. Since adding topic filters, our Monday review takes 20 minutes instead of nearly an hour. The team can focus on billing issues first and then return to requests. Please keep those filters visible when the table layout changes; they have become part of our routine.",
+    "channel": "Community",
+    "analysis": {
+      "topic": "usability",
+      "intent": "praise",
+      "summary": "Topic filters cut the weekly review from almost an hour to 20 minutes. The team relies on them to triage billing issues and wants them retained in layout changes.",
+      "evidence": [
+        "our Monday review takes 20 minutes instead of nearly an hour",
+        "keep those filters visible when the table layout changes"
+      ]
+    }
+  },
+  {
+    "text": "Notifications arrive while I keep the browser open. If my laptop sleeps during lunch, new messages stop appearing after I return, even though the inbox counter increases. Signing out and back in restores them. I missed an urgent customer message yesterday because I assumed the notification list was current.",
+    "channel": "Support",
+    "analysis": {
+      "topic": "reliability",
+      "intent": "issue",
+      "summary": "Notifications stop after the laptop sleeps, while the inbox count continues updating. Signing in again restores delivery; one urgent message was missed.",
+      "evidence": [
+        "new messages stop appearing after I return",
+        "Signing out and back in restores them",
+        "I missed an urgent customer message"
+      ]
+    }
+  },
+  {
+    "text": "Our account team uses a narrow laptop screen during calls. When they scroll across the results table to see the amount and renewal date, the customer name disappears. They keep scrolling back to check they are on the right row. Please freeze the customer column so we can compare the remaining fields without losing the name.",
+    "channel": "In-app",
+    "analysis": {
+      "topic": "usability",
+      "intent": "request",
+      "summary": "Account managers want a fixed customer column on narrow screens so they can compare renewal details without repeatedly scrolling back to identify the row.",
+      "evidence": ["the customer name disappears", "freeze the customer column"]
+    }
+  },
+  {
+    "text": "The invoice page lists the correct total and payment date. However, Download PDF gives me a file with a blank page, including when I download an older invoice. Our accountant needs the tax details to close this month. A screenshot of the total is not acceptable for bookkeeping, so I need a complete invoice document.",
+    "channel": "Support",
+    "analysis": {
+      "topic": "billing",
+      "intent": "issue",
+      "summary": "Invoice PDFs download as blank pages despite correct on-screen totals. Missing tax details prevent the accountant from closing the month.",
+      "evidence": [
+        "Download PDF gives me a file with a blank page",
+        "needs the tax details to close this month"
+      ]
+    }
+  },
+  {
+    "text": "The dashboard opens quickly for our small test workspace. In the main workspace with roughly 40,000 orders, the first load takes about 12 seconds. Changing a date filter is then quick. Our team opens the dashboard repeatedly between calls, so the first-load delay is the problem rather than the charts themselves.",
+    "channel": "In-app",
+    "analysis": {
+      "topic": "performance",
+      "intent": "issue",
+      "summary": "The first dashboard load takes about 12 seconds in the larger workspace. Later filtering is fast, so repeated initial loads are the main source of delay.",
+      "evidence": [
+        "the first load takes about 12 seconds",
+        "Changing a date filter is then quick"
+      ]
+    }
+  },
+  {
+    "text": "The new import preview caught two duplicate columns before I uploaded a customer spreadsheet. Previously I only discovered mistakes after importing and had to delete the whole batch. This time I corrected the mapping immediately and finished without asking support. Seeing a few sample rows next to the mapping was the useful part.",
+    "channel": "Community",
+    "analysis": {
+      "topic": "usability",
+      "intent": "praise",
+      "summary": "The import preview prevented a mapping error and avoided deleting and repeating an import. Sample rows beside the field mapping made the correction clear.",
+      "evidence": [
+        "caught two duplicate columns before I uploaded",
+        "Seeing a few sample rows next to the mapping was the useful part"
+      ]
+    }
+  },
+  {
+    "text": "Something looked different when I opened the reports screen yesterday afternoon. I am not sure whether it was the selected date or the numbers themselves, and I cannot reproduce it this morning. I did not save a screenshot. Please let me know what information would help you investigate if it happens again.",
+    "channel": "Support",
+    "analysis": {
+      "topic": "other",
+      "intent": "unclear",
+      "summary": "A possible report discrepancy cannot yet be reproduced. The message lacks the affected date range, values and screenshot needed to identify a specific fault.",
+      "evidence": [
+        "I am not sure whether it was the selected date or the numbers themselves",
+        "I cannot reproduce it this morning",
+        "I did not save a screenshot"
+      ]
+    }
+  },
+  {
+    "text": "I saved a report with the status set to Open and the region set to West. Clicking a customer and returning to the report resets both filters, so closed requests appear in the list again. The saved report name still appears at the top. I nearly followed up with a customer whose issue was already resolved because I trusted that view.",
+    "channel": "Support",
+    "analysis": {
+      "topic": "reliability",
+      "intent": "issue",
+      "summary": "Returning from a customer resets a saved report’s filters while retaining its name. This can make resolved requests look like open follow-ups.",
+      "evidence": [
+        "returning to the report resets both filters",
+        "The saved report name still appears at the top"
+      ]
+    }
+  },
+  {
+    "text": "Our company pays for three workspaces and receives a separate invoice for each one. Finance needs a purchase-order number on every invoice, but we currently email support to add it manually each month. Please let a billing administrator save that number once per workspace. We do not need to change the payment method.",
+    "channel": "Community",
+    "analysis": {
+      "topic": "billing",
+      "intent": "request",
+      "summary": "Billing administrators want a saved purchase-order number per workspace to avoid monthly invoice corrections through support.",
+      "evidence": [
+        "email support to add it manually each month",
+        "save that number once per workspace"
+      ]
+    }
+  },
+  {
+    "text": "Uploading a CSV with 2,000 rows finishes normally. With 25,000 rows the progress indicator reaches 100 percent but the new records do not appear for another five minutes. I clicked Import again because I thought it had failed and ended up with duplicates. It would help to distinguish upload completion from processing completion.",
+    "channel": "In-app",
+    "analysis": {
+      "topic": "performance",
+      "intent": "issue",
+      "summary": "Large imports appear complete before records are available. A five-minute processing delay prompted a duplicate import; upload and processing status need to be distinguishable.",
+      "evidence": [
+        "the new records do not appear for another five minutes",
+        "clicked Import again because I thought it had failed"
+      ]
+    }
+  },
+  {
+    "text": "I work through the review queue with the keyboard because switching to the mouse slows me down. Search is easy to focus, but moving from one result to the next requires opening the list again. Please add next and previous controls on the detail page, with keyboard shortcuts. They should respect the filters I already selected.",
+    "channel": "Community",
+    "analysis": {
+      "topic": "usability",
+      "intent": "request",
+      "summary": "Reviewers want keyboard-accessible next and previous navigation between filtered results without returning to the list for every message.",
+      "evidence": [
+        "moving from one result to the next requires opening the list again",
+        "They should respect the filters I already selected"
+      ]
+    }
+  },
+  {
+    "text": "We connected our help desk last week and most conversations arrive correctly. Messages sent just after midnight appear on the following day in the report, while the original help desk shows the expected date. Our team is in Sydney. The text is intact, but our daily totals no longer match the support system.",
+    "channel": "Support",
+    "analysis": {
+      "topic": "reliability",
+      "intent": "issue",
+      "summary": "Messages around midnight fall on the wrong reporting day for a Sydney team. Content is preserved, but the daily totals differ from the source help desk.",
+      "evidence": [
+        "Messages sent just after midnight appear on the following day",
+        "Our team is in Sydney",
+        "our daily totals no longer match"
+      ]
+    }
+  },
+  {
+    "text": "I changed our billing address before downloading this quarter’s receipts. The settings page displays the new address, but both the latest receipt and newly generated invoices still contain the old one. Our legal entity has not changed. Accounting rejected the documents because the address no longer matches our records.",
+    "channel": "Support",
+    "analysis": {
+      "topic": "billing",
+      "intent": "issue",
+      "summary": "Invoices and receipts retain the old billing address after settings are updated. Accounting is rejecting the resulting documents.",
+      "evidence": [
+        "newly generated invoices still contain the old one",
+        "Accounting rejected the documents"
+      ]
+    }
+  },
+  {
+    "text": "We now use the side-by-side source view in our weekly review. It helped us catch a summary that made a customer’s suggestion sound like a confirmed bug. We could check the quote immediately instead of searching the help desk again. The view has made it easier to discuss what the customer actually reported.",
+    "channel": "In-app",
+    "analysis": {
+      "topic": "usability",
+      "intent": "praise",
+      "summary": "Showing the source beside its summary helped reviewers distinguish a suggestion from a reported bug and verify the interpretation without reopening the help desk.",
+      "evidence": [
+        "made a customer’s suggestion sound like a confirmed bug",
+        "check the quote immediately instead of searching the help desk again"
+      ]
+    }
+  },
+  {
+    "text": "I do not mind waiting for a large export if I can keep working. Right now I have to leave the tab open and check it repeatedly. Please run the export in the background and notify me when the file is ready. The download should use the filters I selected when I started, even if I change the screen afterwards.",
+    "channel": "Community",
+    "analysis": {
+      "topic": "performance",
+      "intent": "request",
+      "summary": "Customers want background exports with a completion notification and a fixed snapshot of the filters selected when the export starts.",
+      "evidence": [
+        "run the export in the background and notify me when the file is ready",
+        "use the filters I selected when I started"
+      ]
+    }
+  },
+  {
+    "text": "Two reviewers sometimes reply to the same customer within a minute of each other. Each sees the conversation as unassigned until refreshing the page. Yesterday that produced two contradictory answers about a refund. Please show when another teammate has taken ownership before a second person starts replying.",
+    "channel": "Support",
+    "analysis": {
+      "topic": "reliability",
+      "intent": "issue",
+      "summary": "Delayed assignment updates allow two reviewers to answer the same customer. A recent collision produced contradictory refund advice.",
+      "evidence": [
+        "Each sees the conversation as unassigned until refreshing",
+        "two contradictory answers about a refund"
+      ]
+    }
+  },
+  {
+    "text": "We are exploring ways to make our monthly customer review less manual. I have heard that your reports might help, but I have not used them yet and cannot point to a specific missing feature. We currently combine notes from sales and support in a spreadsheet. I would like to understand which part of that process the product can replace.",
+    "channel": "Community",
+    "analysis": {
+      "topic": "other",
+      "intent": "unclear",
+      "summary": "A prospective customer wants guidance on consolidating sales and support notes. They have not identified a product defect or a specific feature request yet.",
+      "evidence": [
+        "I have not used them yet",
+        "combine notes from sales and support in a spreadsheet"
+      ]
+    }
+  },
+  {
+    "text": "The weekly digest has replaced the spreadsheet I used to send to team leads. It includes the important changes and links back to each customer message, so they can investigate without asking me for context. Preparing that update used to take 45 minutes every Monday. I now only add a short note about decisions we need to make.",
+    "channel": "Community",
+    "analysis": {
+      "topic": "usability",
+      "intent": "praise",
+      "summary": "The weekly digest replaces a 45-minute manual update. Links to original messages let team leads investigate independently while the reviewer focuses on decisions.",
+      "evidence": [
+        "Preparing that update used to take 45 minutes every Monday",
+        "links back to each customer message"
+      ]
+    }
+  },
+  {
+    "text": "We rely on the Monday email report before our planning meeting. The last two reports arrived with empty charts, although opening the same date range in the dashboard showed the expected data. Resending the email did not help. I copied screenshots into the meeting notes as a workaround, but the team lost the links to the underlying records.",
+    "channel": "Support",
+    "analysis": {
+      "topic": "reliability",
+      "intent": "issue",
+      "summary": "Scheduled email reports contain empty charts despite valid dashboard data. Screenshot workarounds preserve the visuals but lose links to the original records.",
+      "evidence": [
+        "reports arrived with empty charts",
+        "opening the same date range in the dashboard showed the expected data",
+        "the team lost the links to the underlying records"
+      ]
+    }
+  }
+]

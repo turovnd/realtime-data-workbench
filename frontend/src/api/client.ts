@@ -7,7 +7,7 @@ import {
   recordSchema,
   type FeedAdapter,
 } from "./contracts";
-import { createDemoFeedAdapter } from "./demo-feed";
+import { createDemoFeedAdapter } from "./demo";
 import { api, baseUrl, getSession } from "./auth";
 
 export const createHttpAdapter = (): FeedAdapter => ({
