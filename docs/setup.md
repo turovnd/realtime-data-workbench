@@ -20,7 +20,7 @@ pnpm install --frozen-lockfile
 VITE_API_URL=http://127.0.0.1:8002 pnpm --dir frontend dev
 ```
 
-Open `http://127.0.0.1:5174`. Without `VITE_API_URL`, the app runs an explicitly labelled browser fixture and disables account sign-in. `VITE_API_URL=same-origin` is used by the local Docker web proxy and the [Vercel Services configuration](vercel.md). The older frontend-only deployment uses the bare HTTPS API origin; [delivery status](delivery-status.md) records the current public topology.
+Open `http://127.0.0.1:5174`. Without `VITE_API_URL`, the app runs an explicitly labelled browser fixture and disables account sign-in. `VITE_API_URL=same-origin` is used by the local Docker web proxy and the hosted [Vercel Services configuration](vercel.md). The public UI, API and Swagger share [one origin](https://turovnd-feedback-desk.vercel.app); local development remains independent of Vercel and Neon.
 
 ## Regenerate the API client
 

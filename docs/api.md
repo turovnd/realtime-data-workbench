@@ -1,8 +1,8 @@
 # API and Swagger
 
-Production API origin: `https://realtime-api.b2p.space`; local origin: `http://127.0.0.1:8002`. Business routes include `/api` in their paths. Set the frontend API variable to the bare origin, not an origin ending in `/api`.
+Production API origin: `https://turovnd-feedback-desk.vercel.app`; local origin: `http://127.0.0.1:8002`. Business routes include `/api` in their paths. Hosted frontend builds use `VITE_API_URL=same-origin`. For a separate local API, use its bare origin without an `/api` suffix.
 
-FastAPI exposes generated OpenAPI at `/openapi.json`. Swagger assets are served locally at `/docs`, with explicit operation tags/descriptions, strict request/response models and bearer security. [Public Swagger](https://realtime-api.b2p.space/docs) and [OpenAPI](https://realtime-api.b2p.space/openapi.json) describe the published application. The table below describes the source contract; [delivery status](delivery-status.md) identifies the published revision.
+FastAPI exposes generated OpenAPI at `/openapi.json`. Swagger assets are served locally at `/docs`, with explicit operation tags/descriptions, strict request/response models and bearer security. [Public Swagger](https://turovnd-feedback-desk.vercel.app/docs) and [OpenAPI](https://turovnd-feedback-desk.vercel.app/openapi.json) describe the published application. The table below describes the source contract; [delivery status](delivery-status.md) identifies the published revision.
 
 | Method/path                                       | Purpose                                                                  | Authentication  |
 | ------------------------------------------------- | ------------------------------------------------------------------------ | --------------- |
@@ -34,7 +34,9 @@ Authenticated detail returns 200 or workspace-scoped 404. Submission takes stric
 
 `POST /api/feedback/{record_id}/analysis` accepts only `{ "identity": "a-new-request-identity" }`. Identity is nonblank, contains no NUL and is at most 100 characters. Reuse it when retrying an uncertain submission; a new deliberate analysis uses a new identity.
 
-The route returns `RecordView`: 202 for a new run or 200 for a replay of the same identity. It returns 401 for authentication failure, workspace-scoped 404 for a missing record, 409 for an active run, 422 for invalid input and 503 when real analysis is not enabled. Readiness requires both `provider_mode=openrouter` and `openrouter_calls_enabled=true`; upstream availability and credit can still fail during processing.
+The route returns `RecordView`: 202 for a new run or 200 for a replay of the same identity. It returns 401 for authentication failure, workspace-scoped 404 for a missing record, 409 for an active run, 422 for invalid input and 503 when real analysis is not enabled. Readiness requires an explicitly selected live provider and its enablement flag; production uses `provider_mode=openrouter` and `openrouter_calls_enabled=true`. Upstream availability and credit can still fail during processing.
+
+Hosted writes publish pending job IDs only after commit. A publication failure does not turn an accepted write into an HTTP failure or lose its job: replaying the same request can notify it again, and scheduled recovery repairs the publication gap. Private subscribers have no public HTTP mutation endpoint.
 
 Each job/result includes its numeric `run`; jobs include provider and origin. There is no lifetime run cap; only one unfinished run per record is allowed. `RecordView` independently returns the latest ten jobs and ten successful outputs, ordered by run. Earlier jobs/results remain stored. Activity and batch details read the exact historical run directly. API acceptance is not completed analysis: poll the record to observe `queued`, `leased`, `succeeded`, `failed` or `cancelled` state. A failed provider call never creates a fixture result.
 

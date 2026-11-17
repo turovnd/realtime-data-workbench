@@ -2,7 +2,7 @@
 id: FD-T07
 type: task
 is_task_of: FD-S03
-status: in-progress
+status: implemented
 depends_on: [FD-T04, FD-T05]
 ---
 
@@ -29,4 +29,8 @@ Real PostgreSQL queue/recovery regressions; Vercel build and subscriber discover
 
 ## Evidence and status
 
-The project is in B2Data Pro and Neon Free is connected. Source checks pass, and an isolated Vercel Function reached OpenRouter's public catalog. Data migration, hosted subscriber verification and authenticated generation remain pending. The existing public backend remains active until a verified cutover. See [delivery status](../../delivery-status.md).
+The public UI, API and private Queue subscribers run in B2Data Pro with Neon Free. All eleven source table fingerprints and the provider counter matched after transfer; unrelated server workloads and proxy configuration were unchanged. The old application writers remain stopped.
+
+A public submission completed one real OpenRouter attempt, saved three exact source quotes and appeared in Activity after reload. Cursor pagination reached 25 of 25 runs. Preview database isolation and a manual recovery-schedule invocation were verified. The production recovery subscriber ran automatically at 10:00:44 UTC on 17 November 2026 and reported no due work to republish.
+
+The capability is implemented. Owner interface acceptance and the observed platform challenge remain explicit in [delivery status](../../delivery-status.md).

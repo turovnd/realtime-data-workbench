@@ -109,12 +109,18 @@ test("unknown provider status blocks submission until availability is recovered"
     page.getByRole("button", { name: "Add feedback", exact: true }).first()
   ).toBeDisabled();
   await page.clock.runFor(4100);
-  await expect(
-    page.getByRole("alert").filter({ hasText: "Analysis status unavailable" })
-  ).toBeVisible();
+  const error = page
+    .getByRole("alert")
+    .filter({ hasText: "Couldn’t update analysis status" });
+  await expect(error).toContainText("Status unavailable");
+  await expect(error).toContainText("Response status: 503");
   expect(fixture.submissions).toEqual([]);
   fixture.setStatusAvailable(true);
-  await page.getByRole("button", { name: "Try again", exact: true }).click();
+  await error.getByRole("button", { name: "Try again", exact: true }).click();
+  await expect(error).not.toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Add feedback", exact: true }).first()
+  ).toBeEnabled();
   await page
     .getByRole("button", { name: "Try an example", exact: true })
     .click();

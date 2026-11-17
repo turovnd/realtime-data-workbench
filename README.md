@@ -4,9 +4,7 @@ Customer feedback often mixes a useful request with background details, workarou
 
 Feedback Desk turns a message into a short AI summary, a topic, an intent and supporting quotes. The original stays beside the result so a reviewer can check the interpretation. Every analysis run is saved, including failures and repeated attempts.
 
-**[Try the demo](https://turovnd-feedback-desk.vercel.app)** · [API docs](https://realtime-api.b2p.space/docs) · [Architecture](docs/architecture.md) · [Verification and release](docs/delivery-status.md)
-
-**Hosted AI status:** the UI and API are updated, but OpenRouter currently rejects requests from the server. Real analysis is verified locally; the public AI scenario remains blocked. See [release evidence](docs/delivery-status.md#hosted-ai-blocker).
+**[Try the demo](https://turovnd-feedback-desk.vercel.app)** · [API docs](https://turovnd-feedback-desk.vercel.app/docs) · [Architecture](docs/architecture.md) · [Verification and release](docs/delivery-status.md)
 
 ## Try one complete scenario
 
@@ -16,7 +14,7 @@ Feedback Desk turns a message into a short AI summary, a topic, an intent and su
 4. Compare the AI summary with the original and its supporting quotes. Check that the failed monthly export, working smaller exports and customer impact have not been confused.
 5. Run **Analyze again**, then open **Activity** to inspect the saved runs and their results.
 
-Opening the demo does not call a model: seeded results are labelled as samples. Submitting a message to the live-configured API or explicitly analyzing an existing one invokes the selected AI provider. The result identifies its model. Provider failures remain visible; a failed live request never becomes a sample response.
+Opening the demo does not call a model: seeded results are labelled as samples. Submitting a message or explicitly analyzing an existing one invokes OpenRouter. The result identifies its model. Provider failures remain visible; a failed live request never becomes a sample response.
 
 ## What the MVP does
 
@@ -30,16 +28,16 @@ This is a focused review tool. It does not automatically decide product prioriti
 
 ## Engineering choices
 
-| Choice                                          | Why                                                                                                           | Tradeoff                                                                                      |
-| ----------------------------------------------- | ------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------- |
-| PostgreSQL stores both records and durable jobs | A message and its work commit together. Claims, retries and accepted results have one transactional boundary. | A bounded, deliberately serialized demo; no high-throughput claim or separate broker.         |
-| Separate API and worker                         | Model latency does not hold an HTTP request open. Work survives a worker restart.                             | A worker must be operated and monitored alongside the API.                                    |
-| Structured output plus exact source quotes      | Reject malformed results and quotes that are absent from the original.                                        | Provenance is checkable; classification and interpretation still need human review.           |
-| Immutable messages and saved analysis runs      | A new model result cannot erase what the customer said or what an earlier run produced.                       | More stored history; list and detail responses need explicit bounds.                          |
-| Polling and stable cursor views                 | Progress updates work with ordinary HTTP; new messages do not reshuffle a page while it is being reviewed.    | Progress is not instantaneous, and new arrivals require a refreshed list.                     |
-| Vercel UI with a Docker backend                 | Static frontend delivery is independent of Python workers and persistent PostgreSQL storage.                  | UI and backend releases must be coordinated; a Git UI deployment does not deploy the backend. |
+| Choice                                                        | Why                                                                                    | Tradeoff                                                                                 |
+| ------------------------------------------------------------- | -------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
+| PostgreSQL records and durable jobs, delivered through Queues | Feedback and its job commit together; repeated delivery preserves saved results.       | A thirty-minute schedule repairs missed publication after commit.                        |
+| Private Python subscribers with leases and completion fencing | Model calls run outside the HTTP request; stale workers cannot overwrite results.      | At-least-once delivery can repeat an interrupted, already-billed model call.             |
+| Structured output plus exact source quotes                    | Reject malformed results and quotes absent from the original.                          | Quotes do not prove correct interpretation; human review remains necessary.              |
+| Immutable messages and saved runs                             | A new result cannot erase the source or an earlier interpretation.                     | History grows; list and detail responses have explicit bounds.                           |
+| Polling and cursor views                                      | Ordinary HTTP supports progress updates and stable review pages.                       | Updates are periodic, and new arrivals require a refreshed list.                         |
+| Vercel Services and Neon Free                                 | One Git revision deploys UI, FastAPI and subscribers without an always-running worker. | Cold starts add latency. Resources have costs or quotas; schema changes remain explicit. |
 
-The worker owns retries and uses leases with completion fencing to reject stale results. An interrupted external call can still have been billed: the system does not promise exactly-once model calls. Model, timeout and token limits are server-side settings. See [architecture](docs/architecture.md), [workflows](docs/workflows.md) and [operational limits](docs/limits.md).
+The API and subscribers run in `iad1` beside Neon. Processing has bounded concurrency, three attempts per job and durable provider counters. Scheduled redispatch can take roughly thirty-one minutes with healthy infrastructure; this is not a completion guarantee or a throughput benchmark. See [architecture](docs/architecture.md), [deployment](docs/vercel.md) and [operational limits](docs/limits.md).
 
 ## Run locally
 
@@ -50,15 +48,15 @@ cp -n .env.example .env
 docker compose --profile local-web up --build -d --wait
 ```
 
-Open `http://127.0.0.1:8082`. Fresh installs start with live model calls disabled. To use real AI, configure the selected provider's server-side key and explicit enablement described in [setup](docs/setup.md#live-analysis). Existing databases without Alembic require the documented [adoption procedure](docs/setup.md#existing-unversioned-database); never delete a volume to make an upgrade succeed.
+Open `http://127.0.0.1:8082`. Local Docker uses a polling worker and needs no Vercel credentials. Fresh installs disable live model calls. Configure a server-side key and explicit enablement through [setup](docs/setup.md#live-analysis) to use real AI. Existing databases without Alembic require the documented [adoption procedure](docs/setup.md#existing-unversioned-database); never delete a volume to make an upgrade succeed.
 
-For frontend-only work, `pnpm install --frozen-lockfile` followed by `pnpm dev` starts the labelled browser preview. It does not simulate a successful live AI request.
+For frontend-only work, `pnpm install --frozen-lockfile` and `pnpm dev` start the labelled browser fixture.
 
 ## Implementation and evidence
 
-`frontend/` contains the React UI and mirrored tests. `backend/` contains the FastAPI application, typed SQLAlchemy models, Alembic migrations, worker and mirrored tests. The frontend client is generated from the actual OpenAPI schema.
+`frontend/` contains React; `backend/` contains FastAPI, typed SQLAlchemy models, Alembic and processing logic. Each has mirrored tests. The client is generated from OpenAPI. Git `main` deploys both hosted services; Alembic changes remain explicit.
 
-Tests cover workspace isolation, cursor boundaries, concurrent claims, stale-worker completion, retries, migration preservation and browser journeys. A [small real-model evaluation](docs/ai-evaluation.md) checks the demonstration scenarios separately from deterministic regression tests. It is a review sample, not a production accuracy or business-impact benchmark. See [testing](docs/testing.md) and [delivery status](docs/delivery-status.md) for the exact evidence and published revision.
+The published application passed 255 backend tests on disposable PostgreSQL and 62 frontend unit tests. A real OpenRouter analysis completed through the public UI, was saved in Neon and appeared with the same result in Activity. [Delivery status](docs/delivery-status.md) records the exact verification scope and remaining review items. The [AI evaluation](docs/ai-evaluation.md) is a small synthetic regression sample, not a representative accuracy benchmark.
 
 [Project documentation](docs/README.md) · [MVP epics, stories and tasks](docs/planning/README.md)
 

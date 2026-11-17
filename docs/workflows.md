@@ -2,9 +2,9 @@
 
 ## Ingest and enrich
 
-A bounded simulation creates server-authored synthetic inputs. The current local API also accepts one manually entered message per authenticated request, with bounded identity/text and a fixed channel enum. Input identity is unique per workspace: identical retries are idempotent; changed text under the same identity conflicts. Input and initial job commit together. Original text is immutable.
+A bounded simulation creates server-authored synthetic inputs. The API also accepts one manually entered message per authenticated request, with bounded identity/text and a fixed channel enum. Input identity is unique per workspace: identical retries are idempotent; changed text under the same identity conflicts. Input and initial job commit together. Original text is immutable.
 
-A separate worker claims one of at most two globally admitted leases, runs deterministic enrichment or the explicitly configured provider outside the transaction, validates structured output and exact evidence substrings, then conditionally writes an immutable result for `(record, run)`. Failed/invalid output remains visible; no silent deterministic fallback occurs.
+A private Queue subscriber claims one of at most two globally admitted leases, runs deterministic enrichment or the explicitly configured provider outside the transaction, validates structured output and exact evidence substrings, then conditionally writes an immutable result for `(record, run)`. Local Docker uses a polling worker with the same execution logic. Failed/invalid output remains visible; no silent deterministic fallback occurs.
 
 Jobs have queued/leased/succeeded/failed/cancelled states. Leases last 30 seconds; the provider deadline is 10 seconds; the lifetime attempt budget is three. A stale or cancelled lease cannot commit. Crash recovery resumes from persisted jobs. The same provider call can be attempted again after uncertainty, so exactly-once external execution or charges are not guaranteed.
 
@@ -12,7 +12,7 @@ Jobs have queued/leased/succeeded/failed/cancelled states. Leases last 30 second
 
 Opening a demo workspace creates sample inputs and deterministic seed results. It does not trigger bulk paid analysis. An explicit analysis request on an existing record creates a new run using the selected live provider and model; it works for demo and account workspaces. The prior message and results remain intact, including their original provider identity.
 
-A request identity is unique per record, so retrying an uncertain click returns the same run. Another deliberate click uses a new identity after the current run finishes. Only one run per record may be in flight; there is no lifetime run cap. The worker reserves one persisted live-call attempt before contacting the provider, including each retry. A finite budget is optional; local `unlimited` mode continues counting admitted attempts without rejecting them at a cumulative ceiling. Exhausted finite budgets, missing configuration, provider rejection and invalid output remain visible failures; none switch to deterministic output.
+A request identity is unique per record, so retrying an uncertain click returns the same run. Another deliberate click uses a new identity after the current run finishes. Only one run per record may be in flight; there is no lifetime run cap. Processing reserves one persisted live-call attempt before contacting the provider, including each retry. A finite budget is optional; `unlimited` mode continues counting admitted attempts without rejecting them at a cumulative ceiling. Exhausted finite budgets, missing configuration, provider rejection and invalid output remain visible failures; none switch to deterministic output.
 
 The details page presents the current result with its provider provenance. Sample analysis and real AI analysis must remain distinguishable. Activity exposes earlier runs with their exact saved results. Ordinary record responses contain the latest ten jobs and ten successful outputs independently, so later failures do not hide the last successful result. Older history remains stored.
 

@@ -2,10 +2,13 @@
 
 ```mermaid
 flowchart LR
-  UI[React frontend] -->|HTTPS requests and polling| API[FastAPI]
-  API --> DB[(PostgreSQL)]
-  Worker[Python worker] -->|leased jobs and fenced results| DB
-  Worker -->|bounded request| Provider[Selected AI provider]
+  UI[React frontend] -->|same-origin HTTPS and polling| API[FastAPI]
+  API -->|commit feedback and job| DB[(Neon PostgreSQL)]
+  API -->|publish after commit| Queue[Vercel Queues]
+  Queue --> Worker[Private Python subscribers]
+  Worker -->|leased jobs and fenced results| DB
+  Worker -->|bounded request| Provider[OpenRouter]
+  Schedule[Thirty-minute schedule] -->|recovery and retention| Queue
   Migration[Alembic command] -->|explicit schema migration| DB
 ```
 
@@ -53,7 +56,7 @@ The production build embeds the complete list of public assets into the service 
 
 Ingestion saves immutable feedback and its job in one transaction. Worker claims use expiring leases and a fence; provider calls happen outside transactions. Completion checks the lease and fence before accepting a result. Explicit analysis retains earlier runs. Backfill freezes its selected membership. These guarantees are tested against real PostgreSQL; no exactly-once external-call or billing guarantee is claimed.
 
-The Vercel migration candidate replaces continuous hosted polling with post-commit queue publication. Private subscribers invoke the same job execution boundary. PostgreSQL remains the pending-work ledger; scheduled recovery repairs missed publications and expired leases. The local Docker worker remains available. See [Vercel deployment](vercel.md) for delivery semantics, idle-cost assumptions and the cutover checklist.
+Hosted processing uses post-commit queue publication. Private subscribers invoke the shared job execution boundary; PostgreSQL remains the pending-work ledger. Scheduled recovery repairs missed publications and expired leases in bounded pages. Local Docker invokes the same processing logic through a polling worker, without Vercel credentials. See [Vercel deployment](vercel.md) for delivery semantics, idle-cost assumptions and verification.
 
 ## Pagination
 
@@ -71,6 +74,6 @@ Retries belong to the durable worker. The transport performs one request per adm
 
 ## Schema and deployment
 
-Alembic is the sole schema owner. API and worker startup create connections and check readiness; they do not create tables or alter columns. The separate migration service runs before them. Existing unversioned databases require explicit, structurally validated adoption; unknown or drifted schemas fail before being stamped. ORM metadata is checked against the migrated database.
+Alembic is the sole schema owner. API and worker startup create connections and check readiness; they do not create tables or alter columns. Local Compose runs a migration service first; hosted migrations are an explicit release operation through a direct database connection. Existing unversioned databases require explicit, structurally validated adoption; unknown or drifted schemas fail before being stamped. ORM metadata is checked against the migrated database.
 
-The hosted application uses Vercel for the frontend and an isolated Docker API/worker/PostgreSQL stack. The release ledger identifies the source revision actually serving each runtime. See [setup](setup.md), [operations](operations.md), [workflows](workflows.md) and [limits](limits.md).
+Vercel Services deploys the frontend, FastAPI and private Queue subscribers from one Git revision. Runtime connections use Neon pooling with verified TLS; preview deployments use isolated database branches. Local Docker remains independent. The release ledger identifies the verified hosted revision. See [setup](setup.md), [operations](operations.md), [workflows](workflows.md) and [limits](limits.md).

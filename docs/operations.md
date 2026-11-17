@@ -1,66 +1,78 @@
 # Operations and deployment
 
-The UI project now belongs to the owner's B2Data Pro team. The [Vercel deployment guide](vercel.md) describes the Services, Queues and Neon migration candidate. The topology below remains the published application until the release ledger records a verified cutover.
+Feedback Desk runs in the owner's B2Data Pro team on Vercel. See [delivery status](delivery-status.md) for the verified source, deployment and data-transfer evidence, and [Vercel deployment](vercel.md) for configuration details.
 
 ## Current topology
 
-| Surface              | Destination                                                                                    |
-| -------------------- | ---------------------------------------------------------------------------------------------- |
-| UI                   | [https://turovnd-feedback-desk.vercel.app](https://turovnd-feedback-desk.vercel.app) on Vercel |
-| API                  | [https://realtime-api.b2p.space](https://realtime-api.b2p.space)                               |
-| Docker project       | `turovnd-realtime`                                                                             |
-| Published API socket | `127.0.0.1:8002` behind the existing HTTPS proxy                                               |
-| PostgreSQL           | Private named volume and private network in this project's stack                               |
-| Worker               | Separate process/container using the same app database                                         |
+| Surface                | Destination                                                                                                   |
+| ---------------------- | ------------------------------------------------------------------------------------------------------------- |
+| UI and API             | [turovnd-feedback-desk.vercel.app](https://turovnd-feedback-desk.vercel.app), with `/api/*` routed to FastAPI |
+| API documentation      | [Swagger UI](https://turovnd-feedback-desk.vercel.app/docs) and `/openapi.json`                               |
+| Readiness              | [`/health`](https://turovnd-feedback-desk.vercel.app/health)                                                  |
+| Analysis               | Private Python subscriber on `feedback-analysis`                                                              |
+| Recovery and retention | Private subscriber on `feedback-maintenance`, scheduled every thirty minutes                                  |
+| PostgreSQL             | Neon Free beside the `iad1` functions, separate production and preview branches                               |
+| Local development      | Docker Compose with PostgreSQL and a polling worker                                                           |
 
-The current two portfolio stacks retain separate PostgreSQL instances. Consolidation is an unselected operational option; this repository does not depend on a shared database service or the other application. Existing unrelated server services must remain unchanged.
+There is no continuously polling hosted worker. Queues deliver at least once; PostgreSQL owns leases, accepted results and attempt counts. Failed publication leaves pending rows for recovery. Scheduled recovery and browser polling still consume resources; cold starts add latency. The Free plan is neither unlimited capacity nor a zero-cost promise.
 
-## Frontend build and Git delivery
+## Delivery and configuration
 
-Configure the Vercel project with root directory `frontend`, build command `pnpm build` and output `dist`. Production uses Node 24 and `ENABLE_EXPERIMENTAL_COREPACK=1` to honor pinned pnpm 11.20.0. The root workspace and lockfile must be included in the build context.
+Production tracks Git `main`. The repository-root Services configuration builds the UI, FastAPI and private subscribers together. `VITE_API_URL=same-origin` keeps browser calls on the deployment's own origin. Model credentials stay server-side. The [deployment guide](vercel.md#project-configuration) owns the complete environment and builder configuration.
 
-Set `VITE_API_URL=https://realtime-api.b2p.space` at frontend build time, with no `/api` suffix. It is a public origin, never a credential. Missing this variable selects the labelled browser fixture; `same-origin` is reserved for the optional local Docker web proxy.
+Verify preview-specific Neon variables; a static production URL defeats branch isolation. Restrict model credentials to production and reviewed previews. Preview success does not establish production readiness.
 
-Production delivery tracks `main`. `VITE_API_URL` and exact API CORS currently cover the stable production alias only. Feature-branch previews are not promised a working API connection; if used, configure their environment and deliberately allow each exact origin with appropriate data isolation.
+For each release:
 
-The public repository [turovnd/realtime-data-workbench](https://github.com/turovnd/realtime-data-workbench) is connected to the correct Vercel project. A real push to `main` produced a verified READY production deployment. Backend delivery remains separate: a UI deployment does not update API, worker or schema. The current backend image was applied with guarded updates that preserved database/migration containers. Exact image/source/deployment identities and the successful source-revision GitHub CI check are recorded in [delivery status](delivery-status.md).
+1. Run the relevant source checks, real-PostgreSQL tests, frontend checks, build and generated-client verification.
+2. Check schema compatibility with both the current deployment and queued work. Retain a recoverable backup before data or schema changes.
+3. Apply Alembic deliberately through the direct migration connection. API and subscriber startup never change the schema.
+4. Verify the preview's private subscribers, authentication, cursor paging, sample processing and bounded real-AI flow before publishing.
+5. After Git delivery, verify the production alias, `/docs`, `/health`, processing and saved results in Activity. Record the actual evidence in the release ledger.
 
-## Server configuration and rollout
+A Git deployment does not apply schema migrations. Database changes must tolerate overlapping function revisions and previously queued messages. Avoid destructive schema changes while either can still use the old shape.
 
-Keep server secrets in the deployment environment, outside Git and Vercel public variables. Preserve the existing image tag and environment when changing CORS. `WORKBENCH_ALLOWED_ORIGINS` is a JSON array; `FORWARDED_ALLOW_IPS` must contain the verified proxy peer, which may be the Docker bridge gateway.
+## Health and incident checks
 
-Allow the exact production UI origin. Do not allow `*.vercel.app` or automatically trust every preview URL. A preview needs its own deliberate API/data access decision. Default operation is deterministic with live provider calls disabled. Optional provider controls are documented in [setup](setup.md) and [limits](limits.md).
+`GET /health` checks API/database readiness, not queue consumption or provider availability. Inspect the HTTP function, both private subscribers, queue deliveries and persisted job state when work stalls. Distinguish a platform access challenge from an application or model error. The UI retains loaded data and pauses failed polling; use Try again for a temporary request failure, or Reload page when the service requires a browser check. Unexpected HTML is never rendered as an API error body. Log safe error categories and request/job identifiers, never bearer tokens, database URLs, provider keys or full provider responses.
 
-For each release: verify image architecture/digest and compatibility; retain the previous image; run the app's migration deliberately; start only the named app project; wait for readiness; then run the complete synthetic workflow. Configuration-only API changes should recreate only `api` with `--no-deps --no-build --pull never`, preserving DB/worker IDs. Application releases may need both API and worker updated after schema compatibility review. Never use global prune/stop commands or remove volumes as part of rollout.
+For smoke verification, open an isolated demo, page through results, wait for sample jobs, then submit one synthetic message for real AI and check Activity. Verify logout and workspace isolation. Samples do not prove a model call; real-model checks need an explicit attempt bound.
 
-The HTTPS proxy enforces 16 KiB request bodies. Feedback refresh uses polling, so no SSE proxy configuration is required. API auth/rate limits remain enforced behind the proxy. Scoped certificate renewal and proxy validation belong to the deployment operator; repository source alone does not establish renewal success.
+If publication fails, retrying an accepted request can notify its existing job without creating another run. Scheduled recovery also scans due work in bounded pages. With healthy infrastructure, redispatch can take roughly thirty-one minutes. Persistent queue, database or provider failures require diagnosis; repeatedly creating new analysis runs is not a recovery policy.
 
-### First Alembic adoption
+Monitor job age/failures, subscriber errors, retained data, Neon usage and provider attempts. Automatic alerts, high availability and measured throughput are not claimed. External `/health` polling can keep the database active.
 
-Before updating an existing unversioned installation, inspect its current schema and take a recoverable backup. Rehearse adoption on an isolated restore and compare records, analysis jobs/results, accounts, sessions and the provider usage counter. Pause only this project's API and worker writers. Using the new reviewed backend image and existing private database connection, run the migration service with the explicit adoption option:
+## Schema changes and adoption
+
+Use `WORKBENCH_MIGRATION_DATABASE_URL` for an explicit direct connection, or Neon's deployment-specific `WORKBENCH_DATABASE_URL_UNPOOLED`. The runtime pooled URL is only a fallback. Keep credentials out of command arguments and logs. From the repository root, apply migrations with:
 
 ```sh
-docker compose run --rm migrate /app/.venv/bin/python -m workbench.db --adopt
+uv run --directory backend python -m workbench.db
 ```
 
-Then verify the stored revision and schema, and start the reviewed API/worker image. Subsequent deployments use the normal migration command. Adoption rejects unknown shapes; do not bypass it with `stamp head`. Known index normalization can acquire table locks. The migration keeps immutable-history triggers and existing data; downgrades reject deletion of populated data or incompatible repeated-run history.
-
-The hosted database has been adopted to Alembic `0002` after a fresh backup and an isolated restore rehearsal. Existing records were compared before and after adoption; the published source and image are recorded in [delivery status](delivery-status.md). Other existing local databases still require their own adoption procedure.
-
-## Health, smoke and rollback
-
-`GET /health` checks API/database readiness, not worker progress. Create a disposable demo and verify 12+12 cursor paging, worker v1 completion, selected v2 backfill, unchanged source/v1 history and logout revocation. Confirm another workspace cannot use its cursor or mutate its objects. Keep smoke bounded and deterministic.
-
-Record image identity, application health and container state before a change. Afterward compare existing non-target containers and configuration. Monitor restarts, failed/old jobs, disk space and private volume growth. Do not log bearer tokens, passwords, full provider responses or raw Compose configuration.
-
-Rollback to the preceding compatible API/worker image within this project. A schema rollback is separate; restoring an old image does not undo a migration. Do not run `down -v`. Keep data volumes and backups intact.
+Before adopting an unversioned local installation, inspect its schema and rehearse on an isolated restore. Use the explicit `--adopt` option only for a supported shape; do not bypass validation with `stamp head`. Compare records, analysis history, accounts, sessions and provider counters before and after. The [setup guide](setup.md#existing-unversioned-database) contains the adoption commands. Adoption or migration may acquire table locks; plan around active writers.
 
 ## Backup and restore
 
-A persistent Docker volume is not a backup. Arrange encrypted off-host exports, a retention policy and a restoration test into a new isolated database. Verify roles, schema, row counts and a full synthetic workflow before relying on the backup. This release retained a hash-verified off-host copy and successfully restored the backup into isolated PostgreSQL before adoption. This one release rehearsal does not establish scheduled backups or recurring recovery drills. PostgreSQL's [SQL dump documentation](https://www.postgresql.org/docs/current/backup-dump.html) explains per-database dumps and separately handled cluster roles.
+Managed storage does not replace a tested backup procedure. Keep encrypted exports outside the active database, define retention and restore into a separate database before relying on them. Use a direct connection for `pg_dump` and `pg_restore`. Verify schema, immutable-history triggers, record/job/result counts, accounts, sessions and provider counters, then run the synthetic workflow. Roles are handled separately from a per-database dump; see the [PostgreSQL backup documentation](https://www.postgresql.org/docs/current/backup-dump.html).
 
-One host remains a shared failure domain. No high availability or measured throughput guarantee is claimed.
+The server-to-Neon transfer used this sequence:
+
+1. Initialize the empty destination through Alembic and verify its revision and metadata.
+2. Stop only the source application's API and worker **before** taking the final exports. Capture frozen table counts and content fingerprints.
+3. Take a full custom-format backup and a separate genuine data-only dump, excluding `alembic_version`. Retain protected source and off-host copies with matching hashes.
+4. Assert all ten destination application tables are empty. Restore the data-only dump in one transaction with errors fatal, without dropping, truncating or replacing the Alembic schema.
+5. Compare all eleven tables, including the migration revision, and retained provider counters. Run the Alembic metadata check and verify unrelated containers and active proxy configuration are unchanged.
+6. Publish the verified application against Neon. Keep the old writers stopped and retain the source database, image and backups.
+
+A genuine data-only dump records the table-data dependencies needed for restoration into an existing schema. Do not assume selecting data from a full-schema dump has the same restore order. The release rehearsed PostgreSQL 17 to 18 restoration, including a nonempty fixture with foreign keys and immutable-history triggers enabled. Actual transfer evidence is in the [release ledger](delivery-status.md#data-transfer-and-recovery-evidence).
+
+Record exactly what was restored and checked. A release rehearsal does not establish recurring backups or drills; never test restoration over a live database.
 
 ## Schema-aware rollback
 
-Keep the prior image and a database backup before adopting an unversioned database. Verify that backup through an isolated restore and migration rehearsal. An old application image is not automatically compatible with the newer repeat-run schema: after new analysis runs have been accepted, prefer a forward fix. Restoring an old backup would discard later writes and requires an explicit data-recovery decision. Never downgrade or restore the active database just to make an old image start.
+Keep the preceding deployment and a verified database backup. A deployment rollback changes code, not schema or accepted data. Older deployment-associated queue messages may still be delivered; inspect that work rather than assuming rollback stops it. Prefer a compatible forward fix once new analysis history has been accepted.
+
+The previous server deployment is a preserved recovery source, not a second writable production database. Its Feedback Desk writers were stopped before the final exports and remain stopped. Do not restart them alongside the new writers. Returning traffic to that server after Neon has accepted writes requires a deliberate data-recovery decision. Restoring an older backup may lose later writes and must never happen implicitly.
+
+Preserve the old Feedback Desk volume, backup and deployment identity until the recovery decision is complete. Any server-side action must target only this application's named containers and configuration. Never run global stop/prune commands, remove data volumes during rollout, or alter unrelated services or the shared HTTPS proxy.
